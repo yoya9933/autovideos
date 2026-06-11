@@ -1,0 +1,31 @@
+MoneyPrinterTurbo
+利用AI大模型，一键生成高清短视频
+https://github.com/harry0703/MoneyPrinterTurbo
+
+遇到任何问题或建议，可以添加微信群（下面的链接有微信群的二维码）
+https://harryai.cc
+
+
+1，确保网络正常，比如使用VPN（全局流量模式）
+2，如果你无法访问OpenAI等国外大模型，可以选择使用国内的 月之暗面（moonshot） 或 阿里的通义千问（qwen）
+3，bat在运行命令提示符时如果鼠标了点击对应窗口，可能会暂停程序，可选中窗口按Enter键继续运行
+
+【可选】
+将OpenAI的语音识别模型下载后解压，放到 .\MoneyPrinterTurbo\models 目录里面
+最终的文件路径应该是这样的: .\MoneyPrinterTurbo\models\whisper-large-v3
+该模型会用于字幕识别
+下载地址：
+百度网盘: https://pan.baidu.com/s/11h3Q6tsDtjQKTjUu3sc5cA?pwd=xjs9
+夸克网盘：https://pan.quark.cn/s/3ee3d991d64b
+
+
+
+最后双击 start.bat 启动
+或者双击 update.bat 自动更新代码
+
+
+********** 特别注意 ********** 
+如果无法启动，请检查文件夹名称是否有 中文、特殊字符，或空格等。
+比如：
+C:\Users\harry\下载\MoneyPrinterTurbo       这个路径可能启动失败
+C:\Users\harry\Download\MoneyPrinterTurbo   请把中文改成英文，或者移除中文文件夹

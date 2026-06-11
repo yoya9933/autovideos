@@ -1,0 +1,14 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/MoneyPrinterTurbo-Portable-Windows-1.2.6/lib/python/python.exe",
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/MoneyPrinterTurbo-Portable-Windows-1.2.6/MoneyPrinterTurbo",
+    "${workspaceFolder}/MoneyPrinterTurbo-Portable-Windows-1.2.6/lib/python/lib/site-packages"
+  ],
+  "git.scanRepositories": [
+    "d:/coding_202605051504_XY_Propose_Minutes/videoturn_202606011405_XY/MoneyPrinterTurbo-Portable-Windows-1.2.6/MoneyPrinterTurbo"
+  ],
+  "git.ignoredRepositories": [
+    "d:/coding_202605051504_XY_Propose_Minutes/videoturn_202606011405_XY"
+  ],
+  "git.autoRepositoryDetection": "all"
+}
