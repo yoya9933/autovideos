@@ -62,6 +62,16 @@ class TestRssIngestTitleGeneration(unittest.TestCase):
         self.assertIn("不要湊字數", prompt)
         self.assertIn("補不存在的細節", prompt)
 
+    def test_build_script_prompt_requires_short_hook_formulas(self):
+        prompt = build_script_prompt(_entry())
+
+        for formula in ("結果先講", "數字衝擊", "衝突對立", "風險提醒", "反常識"):
+            self.assertIn(formula, prompt)
+
+        self.assertIn("前 3 秒", prompt)
+        self.assertIn("18 個中文字以內", prompt)
+        self.assertIn("禁止使用「今天我們來聊」", prompt)
+
 
 class TestSeenEntryState(unittest.TestCase):
     def test_seen_state_saves_timestamped_records(self):
