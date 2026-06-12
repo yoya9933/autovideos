@@ -99,6 +99,14 @@ def _write_config(config_path: Path, client: dict, refresh_token: str) -> None:
     config_path.write_text(config_text, encoding="utf-8")
 
 
+def _write_env(env_path: Path, client: dict, refresh_token: str) -> None:
+    env_text = env_path.read_text(encoding="utf-8") if env_path.exists() else ""
+    env_text = _replace_config_value(env_text, "YOUTUBE_CLIENT_ID", client["client_id"])
+    env_text = _replace_config_value(env_text, "YOUTUBE_CLIENT_SECRET", client["client_secret"])
+    env_text = _replace_config_value(env_text, "YOUTUBE_REFRESH_TOKEN", refresh_token)
+    env_path.write_text(env_text, encoding="utf-8")
+
+
 def _serve_once(server: HTTPServer) -> None:
     server.handle_request()
 
@@ -107,13 +115,16 @@ def run() -> int:
     parser = argparse.ArgumentParser(description="Get a YouTube upload refresh token for MoneyPrinterTurbo.")
     parser.add_argument("--client-secret", default=str(_default_client_secret_path()))
     parser.add_argument("--config", default=str(Path(__file__).resolve().parent / "config.toml"))
+    parser.add_argument("--env", default=str(Path(__file__).resolve().parent / ".env"))
     parser.add_argument("--port", type=int, default=8080)
     parser.add_argument("--write-config", action="store_true")
+    parser.add_argument("--write-env", action="store_true")
     parser.add_argument("--no-browser", action="store_true")
     args = parser.parse_args()
 
     client_secret_path = Path(args.client_secret).resolve()
     config_path = Path(args.config).resolve()
+    env_path = Path(args.env).resolve()
     client = _load_installed_client(client_secret_path)
 
     server = HTTPServer(("localhost", args.port), OAuthCallbackHandler)
@@ -168,6 +179,10 @@ def run() -> int:
         _write_config(config_path, client, refresh_token)
         print()
         print(f"Updated config: {config_path}")
+    if args.write_env:
+        _write_env(env_path, client, refresh_token)
+        print()
+        print(f"Updated env: {env_path}")
 
     return 0
 
