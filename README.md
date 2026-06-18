@@ -38,9 +38,62 @@ D:\coding_202605051504_XY_Propose_Minutes\videoturn_202606011405_XY\
 │       └── logs/                      ← 排程執行日誌
 ├── run_daily_auto_publish.bat         ← Windows 執行入口（排程器呼叫）
 ├── install_scheduler.bat              ← 一鍵安裝工作排程器（需管理員）
+├── run_daily_auto_publish.sh          ← Linux / WSL 執行入口
+├── update_and_run.sh                  ← Linux / WSL 更新依賴後執行
+├── install_cron.sh                    ← Linux / WSL 安裝 12:00 / 20:00 cron
+├── LINUX_SETUP.md                     ← Linux / WSL 使用指南
 ├── task_morning.xml                   ← 12:00 排程定義
 └── task_afternoon.xml                 ← 20:00 排程定義
 ```
+
+---
+
+## 二之一、Linux / WSL 使用方式
+
+此專案核心是 Python，原本外層包成 Windows portable 版本。Linux / WSL 不需要使用內附的 Windows `python.exe`、`ffmpeg.exe` 或 `.bat`，改用系統 Python、虛擬環境、系統 ffmpeg，以及 cron。
+
+快速流程：
+
+```bash
+sudo apt update
+sudo apt install -y python3.11 python3.11-venv python3-pip ffmpeg imagemagick cron
+
+cd /home/yoya9933/code/autovideos/MoneyPrinterTurbo-Portable-Windows-1.2.6/MoneyPrinterTurbo
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+cp -n config.example.toml config.toml
+```
+
+接著編輯 `MoneyPrinterTurbo-Portable-Windows-1.2.6/MoneyPrinterTurbo/config.toml`，至少設定 Gemini、Pexels，以及之後 YouTube 上傳需要的 OAuth 資訊。
+
+先測選題，不產片也不上傳：
+
+```bash
+cd /home/yoya9933/code/autovideos
+./run_daily_auto_publish.sh --dry-run
+```
+
+再測產片但不上傳：
+
+```bash
+./run_daily_auto_publish.sh --no-upload
+```
+
+正式跑一次：
+
+```bash
+./run_daily_auto_publish.sh
+```
+
+安裝每天 12:00 / 20:00 自動執行：
+
+```bash
+./install_cron.sh
+```
+
+完整 Linux / WSL 步驟請看 `LINUX_SETUP.md`。
 
 ---
 
@@ -48,8 +101,9 @@ D:\coding_202605051504_XY_Propose_Minutes\videoturn_202606011405_XY\
 
 ```text
 Windows 工作排程器（每天 12:00 / 20:00）
+或 Linux cron（每天 12:00 / 20:00）
         ↓
-run_daily_auto_publish.bat
+run_daily_auto_publish.bat / run_daily_auto_publish.sh
         ↓
 MoneyPrinterTurbo\auto_publish_youtube.py
         ↓
