@@ -40,6 +40,7 @@ from app.services.rss_ingest import (
 from app.services.thumbnail import generate_thumbnail
 from app.services.youtube_publisher import youtube_publisher
 from app.services.youtube_upload import youtube_uploader
+from app.services.llm import VIDEO_TOPIC_KEYWORD_MAP
 
 
 def _get_feed_urls() -> list[str]:
@@ -234,98 +235,6 @@ DEFAULT_DAILY_MATERIAL_TERMS = [
     "city skyline",
 ]
 
-DAILY_MATERIAL_KEYWORD_RULES = [
-    (
-        (
-            "ai",
-            "gemini",
-            "openai",
-            "chatgpt",
-            "\u4eba\u5de5\u667a\u6167",
-            "\u751f\u6210\u5f0fai",
-        ),
-        ("artificial intelligence", "machine learning", "data center"),
-    ),
-    (
-        (
-            "nvidia",
-            "gpu",
-            "rtx",
-            "\u8f1d\u9054",
-            "\u9ec3\u4ec1\u52f3",
-        ),
-        ("computer chip", "gpu processor", "technology conference"),
-    ),
-    (
-        (
-            "tsmc",
-            "semiconductor",
-            "\u53f0\u7a4d\u96fb",
-            "\u534a\u5c0e\u9ad4",
-            "\u6676\u7247",
-        ),
-        ("semiconductor factory", "computer chip", "circuit board"),
-    ),
-    (
-        (
-            "cyber",
-            "security",
-            "hacker",
-            "\u8cc7\u5b89",
-            "\u9ed1\u5ba2",
-            "\u8a50\u9a19",
-        ),
-        ("cyber security", "hacker", "server room"),
-    ),
-    (
-        (
-            "iphone",
-            "android",
-            "smartphone",
-            "\u624b\u6a5f",
-            "\u61c9\u7528\u7a0b\u5f0f",
-        ),
-        ("smartphone", "mobile app", "people using phone"),
-    ),
-    (
-        (
-            "tesla",
-            "ev",
-            "\u96fb\u52d5\u8eca",
-            "\u81ea\u99d5\u8eca",
-        ),
-        ("electric car", "autonomous vehicle", "battery technology"),
-    ),
-    (
-        (
-            "spacex",
-            "rocket",
-            "satellite",
-            "\u592a\u7a7a",
-            "\u885b\u661f",
-        ),
-        ("space technology", "rocket launch", "satellite"),
-    ),
-    (
-        (
-            "robot",
-            "robotics",
-            "\u6a5f\u5668\u4eba",
-            "\u81ea\u52d5\u5316",
-        ),
-        ("robotics", "factory automation", "industrial robot"),
-    ),
-    (
-        (
-            "gaming",
-            "esports",
-            "faker",
-            "\u96fb\u7af6",
-            "\u904a\u6232",
-        ),
-        ("gaming computer", "esports arena", "computer hardware"),
-    ),
-]
 
 
 def _has_cjk(text: str) -> bool:
@@ -338,18 +247,17 @@ def _ensure_english_material_term(term: str) -> str:
     Guarantee the term is Pexels-searchable (ASCII only).
 
     * Pure-ASCII terms pass through unchanged.
-    * CJK terms are looked up in ``llm.STOCK_VIDEO_KEYWORD_MAP``.
-      On a hit the mapped English phrase is returned.
+    * CJK terms are looked up in ``VIDEO_TOPIC_KEYWORD_MAP`` (from llm.py).
+      On a hit the primary English phrase is returned.
     * Unmapped CJK terms log a warning and return "" so callers can skip them.
     """
     if not _has_cjk(term):
         return term  # already English-safe
 
-    from app.services.llm import STOCK_VIDEO_KEYWORD_MAP
-
     term_lower = term.lower()
-    for keywords, english_term in STOCK_VIDEO_KEYWORD_MAP:
+    for keywords, english_terms in VIDEO_TOPIC_KEYWORD_MAP:
         if any(kw.lower() in term_lower for kw in keywords):
+            english_term = english_terms[0] if isinstance(english_terms, tuple) else english_terms
             logger.debug(
                 f"material term {term!r} mapped to English: {english_term!r}"
             )
@@ -396,7 +304,7 @@ def _build_daily_material_terms(entry, title: str, full_text: str = "") -> list[
     text = f"{title} {entry.title} {entry.summary} {full_text}".lower()
 
     terms: list[str] = []
-    for keywords, mapped_terms in DAILY_MATERIAL_KEYWORD_RULES:
+    for keywords, mapped_terms in VIDEO_TOPIC_KEYWORD_MAP:
         if any(keyword.lower() in text for keyword in keywords):
             _append_material_terms(terms, mapped_terms, amount)
 

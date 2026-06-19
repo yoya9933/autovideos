@@ -204,6 +204,7 @@ telegram_notify_enabled = false
 | 18 | 新增 Email / Telegram 通知服務 | notification.py | 已完成，Email 啟用，Telegram 預設關閉 |
 | 19 | 批次執行時可使用 NullState，避免 WebUI 狀態依賴 | state.py / auto_publish_youtube.py | 已完成 |
 | 20 | 建立 12:00 / 20:00 Windows 工作排程器腳本 | install_scheduler.bat / task_morning.xml / task_afternoon.xml | 已完成 |
+| 21 | 新增每日 job 日報，可統計成功/失敗、公開影片 ID、失敗 stage、Error 標題、來源與素材詞，並可用既有 Email 通知寄出 | app/services/daily_job_report.py / daily_job_report.py / test/services/test_daily_job_report.py | 已完成 |
 
 ---
 

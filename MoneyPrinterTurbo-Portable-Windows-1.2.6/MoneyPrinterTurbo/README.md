@@ -294,6 +294,13 @@ python main.py
 2. 这条流程会复用现有的文案、配音、素材和合成逻辑，所以先确认原本的影片生成流程能正常跑。
 3. 手动执行 `uv run python auto_publish_youtube.py --no-upload`，先检查 `storage/auto_publish/jobs`、生成的脚本、字幕和 MP4；确认没有半句结尾或短片问题后，再执行不带 `--no-upload` 的正式上传。
 
+每日产片后可以用 `daily_job_report.py` 汇总既有 job 与 publish status，不用手动翻 log：
+
+```powershell
+..\lib\python\python.exe daily_job_report.py --date YYYY-MM-DD
+..\lib\python\python.exe daily_job_report.py --send-email
+```
+
 这版的策略是每次只处理一篇尚未发布过的 RSS / Atom 条目，生成一支竖版短视频，并在上传前检查视频长度、字幕、脚本长度、结尾标点、引号完整性和常见半句结尾。它的目标是先把整条链路跑稳，之後再扩充更多来源、多频道或更复杂的排程规则。
 
 ## 语音合成 🗣

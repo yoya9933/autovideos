@@ -616,9 +616,6 @@ def collect_candidate_entries(feed_urls: list[str], seen_entries: set[str], limi
     return candidates
 
 
-def select_next_entry(feed_urls: list[str], seen_entries: set[str]) -> FeedEntry | None:
-    candidates = collect_candidate_entries(feed_urls, seen_entries, limit=1)
-    return candidates[0] if candidates else None
 
 
 def _score_entry_for_video(

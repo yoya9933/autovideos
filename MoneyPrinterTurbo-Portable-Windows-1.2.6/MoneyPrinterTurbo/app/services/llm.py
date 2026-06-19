@@ -24,16 +24,59 @@ DEFAULT_STOCK_VIDEO_TERMS = [
     "city skyline",
     "smartphone",
 ]
-STOCK_VIDEO_KEYWORD_MAP = [
-    (("ai", "人工智慧", "生成式", "模型", "gemini", "openai"), "artificial intelligence"),
-    (("晶片", "半導體", "輝達", "nvidia", "gpu", "台積電"), "computer chip"),
-    (("資安", "駭客", "詐騙", "漏洞", "密碼"), "cyber security"),
-    (("手機", "iphone", "android", "app", "應用"), "smartphone"),
-    (("電動車", "tesla", "電池", "能源"), "electric car"),
-    (("太空", "衛星", "火箭"), "space technology"),
-    (("醫療", "健康", "研究", "科學"), "science research"),
-    (("網路", "雲端", "伺服器", "資料中心"), "data center"),
+VIDEO_TOPIC_KEYWORD_MAP: list[tuple[tuple[str, ...], tuple[str, ...]]] = [
+    (
+        ("ai", "\u4eba\u5de5\u667a\u6167", "\u751f\u6210\u5f0f", "\u751f\u6210\u5f0fai", "\u6a21\u578b", "gemini", "openai", "chatgpt"),
+        ("artificial intelligence", "machine learning", "data center"),
+    ),
+    (
+        ("nvidia", "gpu", "rtx", "\u8f1d\u9054", "\u9ec3\u4ec1\u52f3"),
+        ("computer chip", "gpu processor", "technology conference"),
+    ),
+    (
+        ("tsmc", "semiconductor", "\u53f0\u7a4d\u96fb", "\u81fa\u7a4d\u96fb", "\u534a\u5c0e\u9ad4", "\u6676\u7247"),
+        ("semiconductor factory", "computer chip", "circuit board"),
+    ),
+    (
+        ("cyber", "security", "hacker", "\u8cc7\u5b89", "\u99ed\u5ba2", "\u9ed1\u5ba2", "\u8a50\u9a19", "\u6f0f\u6d1e", "\u5bc6\u78bc"),
+        ("cyber security", "hacker", "server room"),
+    ),
+    (
+        ("iphone", "android", "smartphone", "\u624b\u6a5f", "\u61c9\u7528\u7a0b\u5f0f", "app", "\u61c9\u7528"),
+        ("smartphone", "mobile app", "people using phone"),
+    ),
+    (
+        ("tesla", "ev", "\u96fb\u52d5\u8eca", "\u81ea\u99d5\u8eca", "\u96fb\u6c60", "\u80fd\u6e90"),
+        ("electric car", "autonomous vehicle", "battery technology"),
+    ),
+    (
+        ("spacex", "rocket", "satellite", "\u592a\u7a7a", "\u885b\u661f", "\u706b\u7bad"),
+        ("space technology", "rocket launch", "satellite"),
+    ),
+    (
+        ("robot", "robotics", "\u6a5f\u5668\u4eba", "\u81ea\u52d5\u5316"),
+        ("robotics", "factory automation", "industrial robot"),
+    ),
+    (
+        ("gaming", "esports", "faker", "\u96fb\u7af6", "\u904a\u6232"),
+        ("gaming computer", "esports arena", "computer hardware"),
+    ),
+    (
+        ("\u91ab\u7642", "\u5065\u5eb7", "\u7814\u7a76", "\u79d1\u5b78"),
+        ("science research", "medical research", "laboratory"),
+    ),
+    (
+        ("\u7db2\u8def", "\u96f2\u7aef", "\u4f3a\u670d\u5668", "\u8cc7\u6599\u4e2d\u5fc3"),
+        ("data center", "cloud computing", "server room"),
+    ),
 ]
+
+# Single-term map derived from VIDEO_TOPIC_KEYWORD_MAP for backward-compatibility
+# with _fallback_stock_video_terms() and _ensure_english_material_term().
+STOCK_VIDEO_KEYWORD_MAP: list[tuple[tuple[str, ...], str]] = [
+    (kw, terms[0]) for kw, terms in VIDEO_TOPIC_KEYWORD_MAP
+]
+
 
 DEFAULT_SCRIPT_SYSTEM_PROMPT = """
 # Role: Video Script Generator
@@ -871,18 +914,3 @@ def _fallback_stock_video_terms(video_subject: str, video_script: str, amount: i
 
     terms.extend(DEFAULT_STOCK_VIDEO_TERMS)
     return _normalize_stock_video_terms(terms, amount)
-
-
-if __name__ == "__main__":
-    video_subject = "生命的意义是什么"
-    script = generate_script(
-        video_subject=video_subject, language="zh-CN", paragraph_number=1
-    )
-    print("######################")
-    print(script)
-    search_terms = generate_terms(
-        video_subject=video_subject, video_script=script, amount=5
-    )
-    print("######################")
-    print(search_terms)
-    

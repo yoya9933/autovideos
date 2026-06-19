@@ -2,6 +2,7 @@
 .git_disabled_20260604/
 MoneyPrinterTurbo-Portable-Windows-1.2.6.7z
 MoneyPrinterTurbo-Portable-Windows-1.2.6/lib/
+.codex-generated-skills/
 
 # === Merged from MoneyPrinterTurbo/.gitignore ===
 .DS_Store
@@ -34,6 +35,9 @@ logs/
 *.ttc
 *.7z
 *.zip
+oauth_helper.*
+resource/songs/
+MoneyPrinterTurbo-Portable-Windows-1.2.6/MoneyPrinterTurbo/resource/songs/
 
 node_modules
 # VuePress

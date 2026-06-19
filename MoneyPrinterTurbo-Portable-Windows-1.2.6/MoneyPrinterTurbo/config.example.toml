@@ -295,6 +295,7 @@ daily_voice_name = "zh-CN-XiaoyiNeural-Female"
 daily_voice_names = ["zh-TW-HsiaoChenNeural-Female", "zh-TW-HsiaoYuNeural-Female", "zh-CN-XiaoyiNeural-Female"]
 daily_voice_rate = 1.0
 daily_bgm_type = "random"
+daily_bgm_volume = 0.15
 daily_subtitle_enabled = true
 daily_paragraph_number = 1
 

@@ -149,6 +149,24 @@ class TestVideoService(unittest.TestCase):
             if os.path.exists(bgm_path):
                 os.remove(bgm_path)
 
+    def test_get_bgm_file_accepts_song_subdirectory_filename(self):
+        song_dir = utils.song_dir()
+        bgm_dir = Path(song_dir) / "test-topic"
+        bgm_path = bgm_dir / "test-subdir-bgm.mp3"
+        bgm_dir.mkdir(parents=True, exist_ok=True)
+        bgm_path.write_bytes(b"fake-mp3")
+
+        try:
+            self.assertEqual(
+                vd.get_bgm_file(bgm_file="test-topic/test-subdir-bgm.mp3"),
+                str(bgm_path),
+            )
+        finally:
+            if bgm_path.exists():
+                bgm_path.unlink()
+            if bgm_dir.exists():
+                bgm_dir.rmdir()
+
     def test_get_bgm_file_accepts_project_relative_song_path(self):
         """
         用户在 WebUI 中可能直接填写 ./resource/songs/xxx.mp3。该路径虽然是
