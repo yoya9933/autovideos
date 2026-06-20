@@ -1,0 +1,4 @@
+interface:
+  display_name: "VideoTurn Visual Designer"
+  short_description: "Guide thumbnails, visual style, media, and BGM fit"
+  default_prompt: "Use $videoturn-visual-designer to refine a VideoTurn Shorts thumbnail, visual direction, media style, or BGM fit."

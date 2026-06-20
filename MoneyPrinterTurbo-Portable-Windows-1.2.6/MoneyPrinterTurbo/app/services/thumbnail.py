@@ -61,6 +61,7 @@ def generate_thumbnail(
     output_path: str,
     width: int = 1280,
     height: int = 720,
+    topic: str = "",
 ) -> str:
     """
     Generate a branded YouTube thumbnail and save it to *output_path*.
@@ -77,16 +78,44 @@ def generate_thumbnail(
         if not font_path:
             logger.warning("No CJK font found; thumbnail text may not render correctly")
 
+        # Theme-specific color configuration
+        theme_styles = {
+            "ai_tools": {
+                "top": (10, 10, 26),         # Deep space dark
+                "bottom": (25, 4, 130),      # Cyber blue/purple
+                "accent": (114, 9, 183),     # Neon purple (#7209b7)
+            },
+            "semiconductor_stock": {
+                "top": (13, 27, 42),         # Deep navy
+                "bottom": (43, 45, 66),      # Slate gray
+                "accent": (247, 127, 0),     # Amber/Orange (#f77f00)
+            },
+            "security_fraud": {
+                "top": (20, 10, 10),         # Cyber dark red
+                "bottom": (55, 6, 23),       # Deep wine red
+                "accent": (208, 0, 0),       # Warning red (#d00000)
+            },
+            "default": {
+                "top": (13, 27, 42),         # Original navy
+                "bottom": (27, 67, 50),      # Original forest green
+                "accent": (247, 37, 133),    # Original hot pink
+            }
+        }
+
+        style = theme_styles.get(topic, theme_styles["default"])
+        top_color = style["top"]
+        bottom_color = style["bottom"]
+        accent = style["accent"]
+
         bar_h  = 64
-        accent = (247, 37, 133)    # #f72585 hot pink
         shadow = (0, 0, 0, 160)    # semi-transparent black
 
         # 1. Canvas + gradient background
         img  = Image.new("RGB", (width, height))
         draw = ImageDraw.Draw(img, "RGBA")
         _vertical_gradient(draw, width, height,
-                           top_color=(13, 27, 42),
-                           bottom_color=(27, 67, 50))
+                           top_color=top_color,
+                           bottom_color=bottom_color)
 
         # 2. Accent bars
         draw.rectangle([(0, 0), (width, bar_h)], fill=accent)

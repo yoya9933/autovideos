@@ -205,6 +205,12 @@ if os.getenv("GEMINI_BACKUP_API_KEY"):
     app["gemini_backup_api_key"] = os.getenv("GEMINI_BACKUP_API_KEY")
 if os.getenv("OPENAI_API_KEY"):
     app["openai_api_key"] = os.getenv("OPENAI_API_KEY")
+if os.getenv("OPENROUTER_API_KEY"):
+    app["openrouter_api_key"] = os.getenv("OPENROUTER_API_KEY")
+if os.getenv("OPENROUTER_MODEL_NAME"):
+    app["openrouter_model_name"] = os.getenv("OPENROUTER_MODEL_NAME")
+if os.getenv("OPENROUTER_BASE_URL"):
+    app["openrouter_base_url"] = os.getenv("OPENROUTER_BASE_URL")
 if os.getenv("EMAIL_SMTP_PASSWORD"):
     app["email_smtp_password"] = os.getenv("EMAIL_SMTP_PASSWORD")
 

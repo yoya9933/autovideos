@@ -1,0 +1,4 @@
+interface:
+  display_name: "VideoTurn Operations Manager"
+  short_description: "Check daily publish runs, scheduler, uploads, and reports"
+  default_prompt: "Use $videoturn-operations-manager to check VideoTurn daily publish status, upload evidence, scheduler state, or safe recovery steps."

@@ -36,24 +36,26 @@ class TestRssIngestTitleGeneration(unittest.TestCase):
         prompt = build_title_prompt(_entry())
 
         self.assertIn("高點擊率但真實", prompt)
-        self.assertIn("不誇大、不捏造", prompt)
-        self.assertIn("只輸出標題本身", prompt)
+        self.assertIn("影片長標題", prompt)
+        self.assertIn("縮圖短標題", prompt)
         self.assertIn("原始標題：維基百科2026年5月30日典範條目", prompt)
 
     def test_generate_video_title_uses_cleaned_ai_title(self):
         with patch(
             "app.services.llm._generate_response",
-            return_value='標題：「AI 晶片突然變貴的真正原因」 #AI',
+            return_value='<long>標題：「AI 晶片突然變貴的真正原因」 #AI</long>\n<short>AI晶片突變貴</short>',
         ):
-            title = generate_video_title(_entry())
+            title, short_title = generate_video_title(_entry())
 
         self.assertEqual(title, "AI 晶片突然變貴的真正原因")
+        self.assertEqual(short_title, "AI晶片突變貴")
 
     def test_generate_video_title_falls_back_to_rss_title_on_llm_failure(self):
         with patch("app.services.llm._generate_response", side_effect=RuntimeError("offline")):
-            title = generate_video_title(_entry(), title_prefix="Shorts")
+            title, short_title = generate_video_title(_entry(), title_prefix="Shorts")
 
         self.assertEqual(title, "Shorts 維基百科2026年5月30日典範條目")
+        self.assertEqual(short_title, "Shorts維基")
 
     def test_build_script_prompt_does_not_force_padding_short_sources(self):
         prompt = build_script_prompt(_entry(), max_summary_length=20)

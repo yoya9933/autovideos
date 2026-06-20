@@ -850,13 +850,12 @@ def build_title_prompt(entry: FeedEntry, max_summary_length: int = 1200) -> str:
         summary = summary[:max_summary_length].rstrip() + "..."
 
     return (
-        "你是繁體中文 YouTube Shorts 標題編輯。請根據以下 RSS 條目，生成 1 個高點擊率但真實的影片標題。\n"
-        "標題策略：\n"
-        "1. 只使用來源標題與摘要能支持的資訊，不誇大、不捏造、不承諾來源沒有的結果。\n"
-        "2. 優先使用反直覺、衝突、具體影響、問題句或懸念，但不能犧牲事實準確性。\n"
-        "3. 18-34 個中文字優先，最長不要超過 60 個字。\n"
-        "4. 不要新聞稿腔，不要來源名稱，不要 hashtag、emoji、引號或 Markdown。\n"
-        "5. 只輸出標題本身，不要解釋或列多個選項。\n\n"
+        "你是繁體中文 YouTube Shorts 標題編輯。請根據以下 RSS 條目，生成 2 個繁體中文標題：\n"
+        "1. 影片長標題：高點擊率但真實，18-34 個字，不要來源名稱，不要 hashtag、emoji、引號或 Markdown。\n"
+        "2. 縮圖短標題：8 個字以內（最長不超過 8 個字），用詞極具衝擊力、字數少、字體大，適合直接印在影片縮圖畫面上（例如「黃仁勳突襲網咖！」）。\n\n"
+        "請嚴格使用以下 XML 格式輸出，不要包含任何額外解釋、引言、Markdown 或標記：\n"
+        "<long>這裡寫影片長標題</long>\n"
+        "<short>這裡寫縮圖短標題</short>\n\n"
         f"原始標題：{entry.title}\n"
         f"來源：{entry.feed_url}\n"
         f"網址：{entry.link}\n"
@@ -885,7 +884,7 @@ def generate_video_title(
     title_prefix: str = "",
     title_suffix: str = "",
     max_length: int = 90,
-) -> str:
+) -> tuple[str, str]:
     fallback_title = build_video_title(
         entry,
         title_prefix=title_prefix,
@@ -893,23 +892,56 @@ def generate_video_title(
         max_length=max_length,
     )
 
+    # Helper function to generate default short title: remove whitespace and punctuation, take 8 chars
+    def make_fallback_short(long_t: str) -> str:
+        cleaned = "".join(c for c in long_t if c.isalnum())
+        return cleaned[:8]
+
     try:
         from app.services import llm
+        import re
 
         response = llm._generate_response(build_title_prompt(entry))
-        generated_title = _clean_generated_title(response or "")
-        if generated_title:
+        response_str = response or ""
+
+        long_match = re.search(r"<long>(.*?)</long>", response_str, re.DOTALL)
+        short_match = re.search(r"<short>(.*?)</short>", response_str, re.DOTALL)
+
+        generated_long = long_match.group(1).strip() if long_match else ""
+        generated_short = short_match.group(1).strip() if short_match else ""
+
+        # Clean long title using existing cleaner if matched, otherwise try full response as fallback
+        if generated_long:
+            cleaned_long = _clean_generated_title(generated_long)
+        else:
+            cleaned_long = _clean_generated_title(response_str)
+
+        if cleaned_long:
             title = build_video_title(
                 entry,
                 title_prefix=title_prefix,
                 title_suffix=title_suffix,
-                generated_title=generated_title,
+                generated_title=cleaned_long,
                 max_length=max_length,
             )
-            logger.info(f"AI generated video title: {title}")
-            return title
+
+            # Clean short title
+            if generated_short:
+                short_title = _clean_generated_title(generated_short)
+            else:
+                short_title = make_fallback_short(cleaned_long)
+
+            # Double check length and content of short title
+            if not short_title:
+                short_title = make_fallback_short(title)
+            else:
+                short_title = short_title[:8]
+
+            logger.info(f"AI generated video title: {title} | short title: {short_title}")
+            return title, short_title
+
         logger.warning(f"AI title generation returned an empty response: {response}")
     except Exception as exc:
         logger.warning(f"AI title generation failed, falling back to RSS title: {exc}")
 
-    return fallback_title
+    return fallback_title, make_fallback_short(fallback_title)

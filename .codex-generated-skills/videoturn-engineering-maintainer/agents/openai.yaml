@@ -1,0 +1,4 @@
+interface:
+  display_name: "VideoTurn Engineering Maintainer"
+  short_description: "Maintain pipeline code, tests, config safety, and Git hygiene"
+  default_prompt: "Use $videoturn-engineering-maintainer to modify or review VideoTurn pipeline code, tests, config, or Git state safely."

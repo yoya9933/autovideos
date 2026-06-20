@@ -108,6 +108,7 @@ def _make_publish_request(
     summary: str,
     hashtags: list[str],
     privacy_status: str,
+    short_title: str = "",
 ) -> PublishRequest:
     return PublishRequest(
         task_id=task_id,
@@ -119,7 +120,7 @@ def _make_publish_request(
         source_name=source_name,
         summary=summary,
         hashtags=hashtags,
-        metadata={"privacy_status": privacy_status},
+        metadata={"privacy_status": privacy_status, "short_title": short_title},
     )
 
 
@@ -332,6 +333,7 @@ class _JobContext:
     video_source: str = ""
     voice_name: str = ""
     material_terms: list[str] | None = None
+    short_title: str = ""
 
     def save(
         self,
@@ -370,6 +372,7 @@ class _JobContext:
             quality_issues=quality_issues,
             publish_state_path=publish_state_path,
             platform_results=platform_results,
+            short_title=self.short_title,
         )
 
 
@@ -394,6 +397,7 @@ def _save_job_metadata(
     quality_issues: list[str] | None = None,
     publish_state_path: str = "",
     platform_results: list[dict] | None = None,
+    short_title: str = "",
 ) -> str:
     """Write a JSON metadata file per execution for audit / review."""
     jobs_dir = Path(config.root_dir) / "storage" / "auto_publish" / "jobs"
@@ -404,6 +408,7 @@ def _save_job_metadata(
         "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "entry_id": entry_id,
         "title": title,
+        "short_title": short_title,
         "description": description,
         "prompt": prompt,
         "video_path": video_path,
@@ -453,6 +458,7 @@ def _save_pending_upload(publish_request: PublishRequest, privacy_status: str) -
         "entry_id": publish_request.entry_id,
         "video_path": publish_request.video_path,
         "title": publish_request.title,
+        "short_title": publish_request.metadata.get("short_title", ""),
         "description": publish_request.description,
         "source_url": publish_request.source_url,
         "source_name": publish_request.source_name,
@@ -608,7 +614,10 @@ def _try_resume_pending_upload(
         thumb_path = os.path.join(
             os.path.dirname(video_path), f"thumbnail-{task_id}-resume.jpg"
         )
-        thumb_result = generate_thumbnail(title=title, output_path=thumb_path)
+        summary = pending.get("summary", "")
+        short_title = pending.get("short_title", "")
+        topic = _detect_topic_name(title=title, summary=summary)
+        thumb_result = generate_thumbnail(title=short_title or title, output_path=thumb_path, topic=topic)
         if thumb_result:
             youtube_uploader.upload_thumbnail(
                 video_id=youtube_video_id, thumbnail_path=thumb_result
@@ -629,6 +638,87 @@ def _try_resume_pending_upload(
         "continuing with normal RSS/generate flow"
     )
     return True  # pending done; continue with normal flow
+
+
+def _detect_topic_name(
+    title: str,
+    summary: str,
+    material_terms: list[str] = None,
+) -> str:
+    """
+    Detect the topic name based on keywords in title, summary, and material_terms.
+    Returns: 'semiconductor_stock', 'security_fraud', 'ai_tools', or '' if no match.
+    """
+    terms_str = " ".join(material_terms) if material_terms else ""
+    search_text = (title + " " + summary + " " + terms_str).lower()
+
+    semi_kws = [
+        "semiconductor", "tsmc", "nvidia", "gpu", "chip", "circuit",
+        "台積電", "臺積電", "半導體", "晶片", "輝達", "黃仁勳", "股"
+    ]
+    security_kws = [
+        "cyber", "security", "hacker", "fraud", "scam", "hack", "leak", "phishing",
+        "資安", "駭客", "黑客", "詐騙", "漏洞", "密碼", "外洩"
+    ]
+    ai_kws = [
+        "ai", "artificial", "intelligence", "machine", "learning", "gemini", "openai", "chatgpt",
+        "人工智慧", "生成式", "模型", "工具", "簡報"
+    ]
+
+    semi_matches = sum(1 for kw in semi_kws if kw in search_text)
+    security_matches = sum(1 for kw in security_kws if kw in search_text)
+    ai_matches = sum(1 for kw in ai_kws if kw in search_text)
+
+    if semi_matches > 0 or security_matches > 0 or ai_matches > 0:
+        counts = {
+            "semiconductor_stock": semi_matches,
+            "security_fraud": security_matches,
+            "ai_tools": ai_matches
+        }
+        folder = max(counts, key=counts.get)
+        if counts[folder] == 0:
+            return ""
+        return folder
+    return ""
+
+
+def _select_topic_bgm_file(
+    title: str,
+    summary: str,
+    material_terms: list[str],
+    song_dir: str = None,
+) -> str:
+    """
+    Selects a topic-specific BGM file based on keywords in title, summary, and material_terms.
+    Returns path relative to song_dir (with forward slash), or empty string if no match/empty.
+    """
+    import glob
+    import random
+    from app.utils import utils
+
+    if not song_dir:
+        song_dir = utils.song_dir()
+
+    folder = _detect_topic_name(title, summary, material_terms)
+    if not folder:
+        logger.info("no topic BGM folder matched")
+        return ""
+
+    target_dir = os.path.join(song_dir, folder)
+    if not os.path.isdir(target_dir):
+        logger.warning(f"topic BGM folder does not exist: {target_dir}")
+        return ""
+
+    files = glob.glob(os.path.join(target_dir, "*.mp3"))
+    if not files:
+        logger.info(f"no topic BGM found for {folder}; falling back to random BGM")
+        return ""
+
+    selected_full_path = random.choice(files)
+    relative_path = os.path.relpath(selected_full_path, song_dir)
+    relative_path = relative_path.replace("\\", "/")
+    logger.info(f"selected topic BGM: {relative_path}")
+    return relative_path
 
 
 def _parse_args() -> argparse.Namespace:
@@ -834,7 +924,7 @@ def run() -> int:
         full_text=full_text,
         min_full_text_length=min_full_text_length,
     )
-    title = generate_video_title(
+    title, short_title = generate_video_title(
         entry,
         title_prefix=_get_config_value("daily_video_title_prefix", ""),
         title_suffix=_get_config_value("daily_video_title_suffix", ""),
@@ -865,6 +955,7 @@ def run() -> int:
         summary=summary,
         hashtags=publish_hashtags,
         privacy_status=privacy_status,
+        short_title=short_title,
     )
     selected_voice_name = _get_daily_voice_name()
     material_terms = [] if video_source == "local" else _build_daily_material_terms(
@@ -887,6 +978,7 @@ def run() -> int:
         video_source=video_source,
         voice_name=selected_voice_name,
         material_terms=material_terms,
+        short_title=short_title,
     )
 
     # ---------- dry-run: stop here ----------
@@ -914,6 +1006,16 @@ def run() -> int:
         )
         return 0
 
+    # ---------- BGM selection ----------
+    daily_bgm_type = _get_config_value("daily_bgm_type", "random")
+    bgm_file = ""
+    if daily_bgm_type == "topic":
+        bgm_file = _select_topic_bgm_file(
+            title=title,
+            summary=summary,
+            material_terms=material_terms,
+        )
+
     # ---------- generate video ----------
     params = VideoParams(
         video_subject=title,
@@ -924,7 +1026,9 @@ def run() -> int:
         video_terms=material_terms if video_source != "local" else None,
         voice_name=selected_voice_name,
         voice_rate=float(_get_config_value("daily_voice_rate", 1.0)),
-        bgm_type=_get_config_value("daily_bgm_type", "random"),
+        bgm_type=daily_bgm_type,
+        bgm_file=bgm_file,
+        bgm_volume=float(_get_config_value("daily_bgm_volume", 0.2)),
         subtitle_enabled=bool(_get_config_value("daily_subtitle_enabled", True)),
         paragraph_number=int(_get_config_value("daily_paragraph_number", 1)),
         video_script_prompt=prompt,
@@ -1105,7 +1209,8 @@ def run() -> int:
         thumb_path = os.path.join(
             os.path.dirname(video_path), f"thumbnail-{task_id}.jpg"
         )
-        thumb_result = generate_thumbnail(title=title, output_path=thumb_path)
+        topic = _detect_topic_name(title=title, summary=summary, material_terms=material_terms)
+        thumb_result = generate_thumbnail(title=short_title or title, output_path=thumb_path, topic=topic)
         if thumb_result:
             thumbnail_uploaded = youtube_uploader.upload_thumbnail(
                 video_id=youtube_video_id,

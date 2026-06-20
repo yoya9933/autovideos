@@ -1,0 +1,4 @@
+interface:
+  display_name: "VideoTurn Content Director"
+  short_description: "Plan Shorts topics, hooks, scripts, and titles"
+  default_prompt: "Use $videoturn-content-director to improve a VideoTurn Shorts topic, hook, script, or title for Traditional Chinese viewers."
