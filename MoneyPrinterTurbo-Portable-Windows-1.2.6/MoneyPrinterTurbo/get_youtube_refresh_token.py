@@ -95,7 +95,6 @@ def _write_config(config_path: Path, client: dict, refresh_token: str) -> None:
     config_text = _replace_config_value(config_text, "youtube_client_id", client["client_id"])
     config_text = _replace_config_value(config_text, "youtube_client_secret", client["client_secret"])
     config_text = _replace_config_value(config_text, "youtube_refresh_token", refresh_token)
-    config_text = _replace_config_value(config_text, "youtube_upload_privacy_status", "private")
     config_path.write_text(config_text, encoding="utf-8")
 
 
@@ -173,7 +172,7 @@ def run() -> int:
     print(f'youtube_client_id = "{client["client_id"]}"')
     print(f'youtube_client_secret = "{_mask_secret(client["client_secret"])}"')
     print(f'youtube_refresh_token = "{_mask_secret(refresh_token)}"')
-    print('youtube_upload_privacy_status = "private"')
+    print("youtube_upload_privacy_status = <unchanged>")
 
     if args.write_config:
         _write_config(config_path, client, refresh_token)
