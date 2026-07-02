@@ -13,8 +13,11 @@ videoturn_202606011405_XY/
 ├─ install_scheduler.bat
 ├─ update_and_run.bat
 ├─ task_0900.xml
-├─ task_morning.xml
-├─ task_afternoon.xml
+├─ task_1130.xml
+├─ task_1400.xml
+├─ task_1630.xml
+├─ task_1900.xml
+├─ task_2130.xml
 └─ MoneyPrinterTurbo-Portable-Windows-1.2.6/
    ├─ lib/python/python.exe
    ├─ lib/ffmpeg/...
@@ -202,10 +205,13 @@ cd .\MoneyPrinterTurbo-Portable-Windows-1.2.6\MoneyPrinterTurbo
 目前批次檔會建立：
 
 - `VideoTurn\AutoPublish_0900`: 09:00
-- `VideoTurn\AutoPublish_Morning`: 12:00
-- `VideoTurn\AutoPublish_Afternoon`: 20:00
+- `VideoTurn\AutoPublish_1130`: 11:30
+- `VideoTurn\AutoPublish_1400`: 14:00
+- `VideoTurn\AutoPublish_1630`: 16:30
+- `VideoTurn\AutoPublish_1900`: 19:00
+- `VideoTurn\AutoPublish_2130`: 21:30
 
-它也會嘗試停用舊的 `\MoneyPrinterTurbo Daily Auto Publish` 根層工作。
+它也會嘗試停用舊的 `VideoTurn\AutoPublish_Morning`、`VideoTurn\AutoPublish_Afternoon`，以及 `\MoneyPrinterTurbo Daily Auto Publish` 根層工作。
 
 ## 測試與檢查
 
