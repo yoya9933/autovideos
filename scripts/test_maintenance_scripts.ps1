@@ -145,6 +145,29 @@ function Test-SafePushRequiresCleanBaseline {
     }
 }
 
+function Test-SafePushRejectsBaselineInsideRepository {
+    Invoke-WithTempRepo {
+        param($fixture)
+
+        $baseline = Join-Path $fixture.Repo "baseline.txt"
+        Set-Content -Path $baseline -Value "" -Encoding UTF8
+        $checkScript = New-PassingCheckScript -Directory $fixture.Root
+
+        $result = Invoke-ScriptProcess -Arguments @(
+            "-NoProfile", "-ExecutionPolicy", "Bypass",
+            "-File", $SafePushScript,
+            "-RepoRoot", $fixture.Repo,
+            "-ExpectedRemoteUrl", $fixture.Remote,
+            "-BaselineStatusPath", $baseline,
+            "-CheckScriptPath", $checkScript,
+            "-Message", "auto-maintenance: test"
+        )
+
+        Assert-True -Condition ($result.ExitCode -ne 0) -Message "Expected an in-repository baseline file to fail."
+        Assert-Contains -Text $result.Output -Expected "Baseline status file must be outside the repository" -Message "Expected baseline path boundary failure message."
+    }
+}
+
 function Test-SafePushBlocksSensitivePath {
     Invoke-WithTempRepo {
         param($fixture)
@@ -266,6 +289,7 @@ function Test-RunMaintenanceChecksRunsMaintenanceScriptTests {
 
 $tests = @(
     "Test-SafePushRequiresCleanBaseline",
+    "Test-SafePushRejectsBaselineInsideRepository",
     "Test-SafePushBlocksSensitivePath",
     "Test-SafePushBlocksLocalSecretConfigNames",
     "Test-SafePushCommitsAndPushesMain",

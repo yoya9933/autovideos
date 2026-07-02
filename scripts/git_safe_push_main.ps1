@@ -151,7 +151,10 @@ function Assert-SafePaths {
 }
 
 function Assert-CleanBaseline {
-    param([string]$Path)
+    param(
+        [string]$Path,
+        [string]$Root
+    )
 
     if ([string]::IsNullOrWhiteSpace($Path)) {
         Fail "BaselineStatusPath is required. Capture `git status --porcelain` before automated edits and pass that file here."
@@ -159,6 +162,16 @@ function Assert-CleanBaseline {
 
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
         Fail "Baseline status file was not found: $Path"
+    }
+
+    $resolvedBaseline = (Resolve-Path -LiteralPath $Path).Path
+    $resolvedRoot = (Resolve-Path -LiteralPath $Root).Path
+    $rootPrefix = $resolvedRoot.TrimEnd(
+        [System.IO.Path]::DirectorySeparatorChar,
+        [System.IO.Path]::AltDirectorySeparatorChar
+    ) + [System.IO.Path]::DirectorySeparatorChar
+    if ($resolvedBaseline.StartsWith($rootPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        Fail "Baseline status file must be outside the repository: $resolvedBaseline"
     }
 
     $baseline = Get-Content -LiteralPath $Path -Raw
@@ -197,7 +210,7 @@ if ([string]::IsNullOrWhiteSpace($CheckScriptPath)) {
     $CheckScriptPath = $defaultCheckScript
 }
 
-Assert-CleanBaseline -Path $BaselineStatusPath
+Assert-CleanBaseline -Path $BaselineStatusPath -Root $repoRootPath
 
 Set-Location $repoRootPath
 
