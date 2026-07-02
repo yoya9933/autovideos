@@ -244,12 +244,33 @@ function Test-RunMaintenanceChecksRejectsInvalidPowerShellSyntax {
     }
 }
 
+function Test-RunMaintenanceChecksRunsMaintenanceScriptTests {
+    Invoke-WithTempRepo {
+        param($fixture)
+
+        $probeScript = Join-Path $fixture.Root "maintenance-tests-probe.ps1"
+        Set-Content -Path $probeScript -Value "Write-Host 'maintenance script tests invoked'`nexit 0`n" -Encoding UTF8
+
+        $result = Invoke-ScriptProcess -Arguments @(
+            "-NoProfile", "-ExecutionPolicy", "Bypass",
+            "-File", $ChecksScript,
+            "-RepoRoot", $fixture.Repo,
+            "-SkipPythonTests",
+            "-MaintenanceScriptTestsPath", $probeScript
+        )
+
+        Assert-True -Condition ($result.ExitCode -eq 0) -Message "Expected maintenance script tests to run. Output: $($result.Output)"
+        Assert-Contains -Text $result.Output -Expected "maintenance script tests invoked" -Message "Expected maintenance script test output."
+    }
+}
+
 $tests = @(
     "Test-SafePushRequiresCleanBaseline",
     "Test-SafePushBlocksSensitivePath",
     "Test-SafePushBlocksLocalSecretConfigNames",
     "Test-SafePushCommitsAndPushesMain",
-    "Test-RunMaintenanceChecksRejectsInvalidPowerShellSyntax"
+    "Test-RunMaintenanceChecksRejectsInvalidPowerShellSyntax",
+    "Test-RunMaintenanceChecksRunsMaintenanceScriptTests"
 )
 
 foreach ($test in $tests) {

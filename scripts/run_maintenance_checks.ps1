@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [string]$RepoRoot = "",
-    [switch]$SkipPythonTests
+    [switch]$SkipPythonTests,
+    [string]$MaintenanceScriptTestsPath = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -143,6 +144,19 @@ if ($changedPaths.Count -gt 0) {
     Test-PowerShellSyntax -Paths $changedPaths
     Test-XmlSyntax -Paths $changedPaths
 }
+
+if ([string]::IsNullOrWhiteSpace($MaintenanceScriptTestsPath)) {
+    $MaintenanceScriptTestsPath = Join-Path $PSScriptRoot "test_maintenance_scripts.ps1"
+}
+if (-not (Test-Path -LiteralPath $MaintenanceScriptTestsPath -PathType Leaf)) {
+    Fail "Maintenance script tests were not found: $MaintenanceScriptTestsPath"
+}
+
+Write-Host "Running maintenance script tests..."
+Invoke-External `
+    -Command "powershell" `
+    -Arguments @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $MaintenanceScriptTestsPath) `
+    -FailureMessage "Maintenance script tests failed."
 
 if (-not $SkipPythonTests) {
     $appRoot = Join-Path $script:RepoRootPath "MoneyPrinterTurbo-Portable-Windows-1.2.6\MoneyPrinterTurbo"
