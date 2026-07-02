@@ -102,7 +102,7 @@ class TestVideoSearchTerms(unittest.TestCase):
         with patch.object(llm, "_generate_response", return_value="Error: quota exceeded"):
             terms = llm.generate_terms("AI 晶片新聞", "台積電與 GPU 需求升溫", amount=3)
 
-        self.assertEqual(terms, ["artificial intelligence", "computer chip", "technology news"])
+        self.assertEqual(terms, ["artificial intelligence", "computer chip", "semiconductor factory"])
 
 
 class TestLiteLLMProvider(unittest.TestCase):

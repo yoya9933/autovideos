@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import os
 import unittest
 import sys
 import tempfile
@@ -95,6 +96,10 @@ class TestVoiceService(unittest.TestCase):
 
         self.loop.run_until_complete(_do())
     
+    @unittest.skipUnless(
+        os.environ.get("VIDEOTURN_RUN_LIVE_TTS_TESTS") == "1",
+        "live Edge TTS test disabled by default",
+    )
     def test_azure_tts_v1(self):
         voice_name = "zh-CN-XiaoyiNeural-Female"
         voice_name = vs.parse_voice_name(voice_name)
