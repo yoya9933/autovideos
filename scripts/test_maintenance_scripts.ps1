@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param()
 
 $ErrorActionPreference = "Stop"
@@ -169,6 +169,33 @@ function Test-SafePushBlocksSensitivePath {
     }
 }
 
+function Test-SafePushBlocksLocalSecretConfigNames {
+    Invoke-WithTempRepo {
+        param($fixture)
+
+        $baseline = Join-Path $fixture.Root "baseline.txt"
+        Set-Content -Path $baseline -Value "" -Encoding UTF8
+        $checkScript = New-PassingCheckScript -Directory $fixture.Root
+        Set-Content -Path (Join-Path $fixture.Repo "prod.env") -Value "SECRET=value" -Encoding UTF8
+        Set-Content -Path (Join-Path $fixture.Repo "config.local.toml") -Value "secret = `"value`"" -Encoding UTF8
+
+        $result = Invoke-ScriptProcess -Arguments @(
+            "-NoProfile", "-ExecutionPolicy", "Bypass",
+            "-File", $SafePushScript,
+            "-RepoRoot", $fixture.Repo,
+            "-ExpectedRemoteUrl", $fixture.Remote,
+            "-BaselineStatusPath", $baseline,
+            "-CheckScriptPath", $checkScript,
+            "-Message", "auto-maintenance: test"
+        )
+
+        Assert-True -Condition ($result.ExitCode -ne 0) -Message "Expected local secret config names to fail."
+        Assert-Contains -Text $result.Output -Expected "Refusing to commit sensitive/generated paths" -Message "Expected sensitive path failure message."
+        Assert-Contains -Text $result.Output -Expected "prod.env" -Message "Expected env file to be blocked."
+        Assert-Contains -Text $result.Output -Expected "config.local.toml" -Message "Expected local config file to be blocked."
+    }
+}
+
 function Test-SafePushCommitsAndPushesMain {
     Invoke-WithTempRepo {
         param($fixture)
@@ -220,6 +247,7 @@ function Test-RunMaintenanceChecksRejectsInvalidPowerShellSyntax {
 $tests = @(
     "Test-SafePushRequiresCleanBaseline",
     "Test-SafePushBlocksSensitivePath",
+    "Test-SafePushBlocksLocalSecretConfigNames",
     "Test-SafePushCommitsAndPushesMain",
     "Test-RunMaintenanceChecksRejectsInvalidPowerShellSyntax"
 )

@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [string]$Message = "",
     [string]$BaselineStatusPath = "",
@@ -99,7 +99,9 @@ function Assert-SafePaths {
 
     $sensitivePatterns = @(
         '(^|/)config\.toml$',
+        '(^|/)config\.local\.toml$',
         '(^|/)\.env(\..*)?$',
+        '(^|/)[^/]+\.env$',
         '(^|/)client_secret.*\.json$',
         '(^|/)oauth_helper\.',
         '(^|/)storage(/|$)',
