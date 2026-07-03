@@ -74,6 +74,37 @@ function Get-StatusPaths {
     return $paths | Sort-Object -Unique
 }
 
+function Get-ChangeFingerprint {
+    $lines = Invoke-Git @("status", "--porcelain", "--untracked-files=all")
+    $fingerprints = @()
+
+    foreach ($line in $lines) {
+        if ([string]::IsNullOrWhiteSpace($line) -or $line.Length -lt 4) {
+            continue
+        }
+
+        $status = $line.Substring(0, 2)
+        $statusPath = $line.Substring(3).Trim()
+        $contentPath = $statusPath
+        if ($contentPath -match " -> ") {
+            $contentPath = ($contentPath -split " -> ")[-1]
+        }
+
+        $normalizedStatusPath = Normalize-RepoPath $statusPath
+        $normalizedContentPath = Normalize-RepoPath $contentPath
+        $fullPath = Join-Path $repoRootPath ($normalizedContentPath -replace "/", "\")
+        if (Test-Path -LiteralPath $fullPath -PathType Leaf) {
+            $contentState = (Get-FileHash -LiteralPath $fullPath -Algorithm SHA256).Hash
+        } else {
+            $contentState = "missing"
+        }
+
+        $fingerprints += "$status`t$normalizedStatusPath`t$contentState"
+    }
+
+    return $fingerprints | Sort-Object
+}
+
 function Test-PathMatchesAnyPattern {
     param(
         [string]$Path,
@@ -245,7 +276,12 @@ if ($statusPaths.Count -eq 0) {
 }
 
 Assert-SafePaths -Paths $statusPaths -Root $repoRootPath -LimitBytes $MaxFileBytes
+$changeFingerprintBeforeChecks = @(Get-ChangeFingerprint)
 Invoke-CheckScript -ScriptPath $CheckScriptPath -Root $repoRootPath -DefaultScriptPath $defaultCheckScript
+$changeFingerprintAfterChecks = @(Get-ChangeFingerprint)
+if (@(Compare-Object -ReferenceObject $changeFingerprintBeforeChecks -DifferenceObject $changeFingerprintAfterChecks).Count -gt 0) {
+    Fail "Maintenance checks modified repository changes. Refusing to stage check-generated mutations."
+}
 
 $statusPaths = Get-StatusPaths
 if ($statusPaths.Count -eq 0) {

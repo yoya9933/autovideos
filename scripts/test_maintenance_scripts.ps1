@@ -219,6 +219,31 @@ function Test-SafePushBlocksLocalSecretConfigNames {
     }
 }
 
+function Test-SafePushRejectsCheckScriptMutation {
+    Invoke-WithTempRepo {
+        param($fixture)
+
+        $baseline = Join-Path $fixture.Root "baseline.txt"
+        Set-Content -Path $baseline -Value "" -Encoding UTF8
+        $checkScript = Join-Path $fixture.Root "mutating-check.ps1"
+        Set-Content -Path $checkScript -Value "Add-Content -Path '$($fixture.Repo)\README.md' -Value 'changed by check'`nexit 0`n" -Encoding UTF8
+        Add-Content -Path (Join-Path $fixture.Repo "README.md") -Value "safe change"
+
+        $result = Invoke-ScriptProcess -Arguments @(
+            "-NoProfile", "-ExecutionPolicy", "Bypass",
+            "-File", $SafePushScript,
+            "-RepoRoot", $fixture.Repo,
+            "-ExpectedRemoteUrl", $fixture.Remote,
+            "-BaselineStatusPath", $baseline,
+            "-CheckScriptPath", $checkScript,
+            "-Message", "auto-maintenance: test"
+        )
+
+        Assert-True -Condition ($result.ExitCode -ne 0) -Message "Expected check-script repository mutation to fail."
+        Assert-Contains -Text $result.Output -Expected "Maintenance checks modified repository changes" -Message "Expected check mutation failure message."
+    }
+}
+
 function Test-SafePushCommitsAndPushesMain {
     Invoke-WithTempRepo {
         param($fixture)
@@ -292,6 +317,7 @@ $tests = @(
     "Test-SafePushRejectsBaselineInsideRepository",
     "Test-SafePushBlocksSensitivePath",
     "Test-SafePushBlocksLocalSecretConfigNames",
+    "Test-SafePushRejectsCheckScriptMutation",
     "Test-SafePushCommitsAndPushesMain",
     "Test-RunMaintenanceChecksRejectsInvalidPowerShellSyntax",
     "Test-RunMaintenanceChecksRunsMaintenanceScriptTests"
