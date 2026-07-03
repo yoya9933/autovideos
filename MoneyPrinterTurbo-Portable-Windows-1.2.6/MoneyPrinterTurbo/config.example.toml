@@ -255,6 +255,8 @@ max_concurrent_tasks = 5
 max_queued_tasks = 100
 
 ########## Daily RSS -> YouTube automation
+daily_default_topic_profile = "tech"
+
 # Feed URLs to monitor. This default mix combines Taiwan trend signals with
 # technology / AI / security / science sources for stronger Shorts topics.
 daily_rss_feeds = [
@@ -379,6 +381,33 @@ facebook_reels_poll_attempts = 10
 # Optional description template for the YouTube upload.
 # Available placeholders: {title}, {source}, {url}, {summary}, {published}, {prompt}
 youtube_description_template = "來源：{source}\n連結：{url}\n\n{summary}\n"
+
+
+[app.daily_topic_profiles.tech]
+feeds = [
+  "https://trends.google.com/trending/rss?geo=TW",
+  "https://news.google.com/rss/headlines/section/topic/TECHNOLOGY?hl=zh-TW&gl=TW&ceid=TW:zh-Hant",
+  "https://technews.tw/feed/",
+  "https://pansci.asia/feed/",
+  "https://www.ithome.com.tw/rss"
+]
+candidate_count = 24
+focus_keywords = ["AI", "人工智慧", "生成式AI", "半導體", "晶片", "NVIDIA", "輝達", "台積電", "資安", "詐騙", "資料中心"]
+focus_keyword_bonus = 8
+excluded_keywords = []
+editorial_brief = "優先選擇 AI、半導體、資安與科技產業中，具有明確衝突、數字或一般人影響的題目。"
+
+[app.daily_topic_profiles.consumer_money]
+feeds = [
+  "https://news.google.com/rss/search?q=%E6%BC%B2%E5%83%B9%20OR%20%E8%A8%82%E9%96%B1%20OR%20%E6%89%8B%E7%BA%8C%E8%B2%BB%20OR%20%E9%80%80%E8%B2%BB%20OR%20%E7%B8%AE%E6%B0%B4%E5%BC%8F%E9%80%9A%E8%86%A8%20-%E8%82%A1%E7%A5%A8%20-%E5%80%8B%E8%82%A1%20-%E5%9F%BA%E9%87%91%20-%E7%94%B3%E8%B3%BC%20-%E5%84%AA%E6%83%A0%20-%E6%B4%BB%E5%8B%95&hl=zh-TW&gl=TW&ceid=TW:zh-Hant",
+  "https://news.google.com/rss/search?q=%E6%B6%88%E8%B2%BB%E7%B3%BE%E7%B4%9B%20OR%20%E5%81%87%E5%AE%A2%E6%9C%8D%20OR%20%E5%88%B7%E5%8D%A1%E7%9B%9C%E7%94%A8%20OR%20%E7%B6%B2%E8%B3%BC%E8%A9%90%E9%A8%99%20OR%20%E9%80%80%E6%AC%BE%E8%A9%90%E9%A8%99%20-%E6%8A%95%E8%B3%87%20-%E5%80%8B%E8%82%A1&hl=zh-TW&gl=TW&ceid=TW:zh-Hant",
+  "https://news.google.com/rss/search?q=%E7%89%A9%E5%83%B9%20OR%20%E6%88%BF%E7%A7%9F%20OR%20%E8%96%AA%E8%B3%87%20OR%20%E4%BF%A1%E7%94%A8%E5%8D%A1%20OR%20%E9%9B%BB%E5%95%86%20OR%20%E6%9C%83%E5%93%A1%E5%88%B6%20OR%20%E5%AE%9A%E5%83%B9%20-%E6%8E%A8%E8%96%A6%20-%E5%84%AA%E6%83%A0%20-%E6%B4%BB%E5%8B%95%20-%E7%94%B3%E8%BE%A6%20-%E9%96%8B%E6%88%B6&hl=zh-TW&gl=TW&ceid=TW:zh-Hant"
+]
+candidate_count = 24
+focus_keywords = ["漲價", "降價", "訂閱", "手續費", "退款", "退費", "消費", "物價", "通膨", "房租", "薪資", "信用卡", "盜刷", "詐騙", "假客服", "網購", "黃牛", "會員", "定價", "壟斷", "消保"]
+focus_keyword_bonus = 4
+excluded_keywords = ["目標價", "買進", "賣出", "存股", "ETF推薦", "基金申購", "信用卡推薦", "申辦送好禮", "開戶禮", "抽獎活動", "限時優惠", "討論牆"]
+editorial_brief = "優先選擇與一般人生活直接相關、具有明確金額、比例、規則變化或損益的題目；先說明觀眾會多付、少拿或承擔什麼風險。可解釋市場現象，但不得提供個股買賣建議。"
 
 
 [whisper]

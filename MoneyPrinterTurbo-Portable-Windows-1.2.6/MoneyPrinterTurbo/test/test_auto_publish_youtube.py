@@ -1,6 +1,8 @@
 import unittest
 import tempfile
+import json
 from pathlib import Path
+from unittest.mock import patch
 
 import auto_publish_youtube as ap
 from app.config import config
@@ -22,6 +24,39 @@ class TestAutoPublish(unittest.TestCase):
             video_source="pexels",
             subtitle_enabled=True,
         )
+
+    def test_parse_args_accepts_topic_profile(self):
+        args = ap._parse_args(["--dry-run", "--topic-profile", "consumer_money"])
+
+        self.assertTrue(args.dry_run)
+        self.assertEqual(args.topic_profile, "consumer_money")
+
+    def test_parse_args_defaults_topic_profile_to_empty_override(self):
+        args = ap._parse_args([])
+
+        self.assertEqual(args.topic_profile, "")
+
+    def test_job_context_persists_topic_profile_and_source_fields(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            with patch.object(config, "root_dir", tmp_dir):
+                job_path = ap._JobContext(
+                    task_id="task-consumer",
+                    entry_id="entry-consumer",
+                    title="訂閱費突然上漲",
+                    description="來源：Consumer News",
+                    prompt="prompt",
+                    topic_profile="consumer_money",
+                    source_title="串流平台宣布調漲月費",
+                    source_url="https://example.com/subscription",
+                    source_feed="Consumer News",
+                ).save(dry_run=True)
+
+            payload = json.loads(Path(job_path).read_text(encoding="utf-8"))
+
+        self.assertEqual(payload["topic_profile"], "consumer_money")
+        self.assertEqual(payload["source_title"], "串流平台宣布調漲月費")
+        self.assertEqual(payload["source_url"], "https://example.com/subscription")
+        self.assertEqual(payload["source_feed"], "Consumer News")
 
     def test_resolve_video_source_falls_back_to_local_when_api_keys_missing(self):
         config.app["daily_video_source"] = "pexels"

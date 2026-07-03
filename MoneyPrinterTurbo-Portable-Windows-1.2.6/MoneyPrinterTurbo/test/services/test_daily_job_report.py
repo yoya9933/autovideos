@@ -35,6 +35,7 @@ class TestDailyJobReport(unittest.TestCase):
                     "timestamp": "2026-06-12T16:10:00+00:00",
                     "title": "AI 晶片需求升溫",
                     "success": True,
+                    "topic_profile": "consumer_money",
                     "privacy_status": "public",
                     "upload_video_id": "yt-public",
                     "material_terms": ["computer chip", "technology news"],
@@ -63,10 +64,22 @@ class TestDailyJobReport(unittest.TestCase):
                     "timestamp": "2026-06-13T04:05:00+00:00",
                     "title": "Error: 429 POST https://generativelanguage.googleapis.com",
                     "success": False,
+                    "topic_profile": "tech",
                     "privacy_status": "public",
                     "failure_stage": "video_generation",
                     "error": "video generation failed",
                     "material_terms": ["technology news"],
+                },
+            )
+            _write_json(
+                jobs / "task-legacy.json",
+                {
+                    "task_id": "task-legacy",
+                    "timestamp": "2026-06-13T05:05:00+00:00",
+                    "title": "舊格式但已發布的影片",
+                    "success": True,
+                    "privacy_status": "private",
+                    "upload_video_id": "yt-legacy",
                 },
             )
             _write_json(
@@ -87,13 +100,16 @@ class TestDailyJobReport(unittest.TestCase):
                 timezone_name="Asia/Taipei",
             )
 
-        self.assertEqual(report.total_jobs, 2)
-        self.assertEqual(report.success_count, 1)
+        self.assertEqual(report.total_jobs, 3)
+        self.assertEqual(report.success_count, 2)
         self.assertEqual(report.failure_count, 1)
         self.assertEqual(report.public_upload_count, 1)
         self.assertEqual(report.error_title_count, 1)
         self.assertEqual(report.source_counts["TechNews"], 1)
         self.assertEqual(report.material_term_counts["technology news"], 2)
+        self.assertEqual(report.published_topic_profile_counts["consumer_money"], 1)
+        self.assertEqual(report.published_topic_profile_counts["unknown"], 1)
+        self.assertNotIn("tech", report.published_topic_profile_counts)
 
         body = render_daily_job_report(report)
         self.assertIn("VideoTurn Daily Report - 2026-06-13", body)
@@ -101,6 +117,26 @@ class TestDailyJobReport(unittest.TestCase):
         self.assertIn("stage=video_generation", body)
         self.assertIn("Error-like titles: 1", body)
         self.assertIn("technology news: 2", body)
+        self.assertIn("Published topic profiles", body)
+        self.assertIn("consumer_money: 1", body)
+        self.assertIn("unknown: 1", body)
+        self.assertIn("Profile balance: tech=0, consumer_money=1 (not 3:3)", body)
+
+    def test_render_daily_job_report_marks_three_by_three_balance(self):
+        report = DailyJobReport(
+            report_date=date(2026, 6, 13),
+            timezone_name="Asia/Taipei",
+            entries=(),
+            source_counts=Counter(),
+            material_term_counts=Counter(),
+            published_topic_profile_counts=Counter(
+                {"tech": 3, "consumer_money": 3}
+            ),
+        )
+
+        body = render_daily_job_report(report)
+
+        self.assertIn("Profile balance: tech=3, consumer_money=3 (3:3 OK)", body)
 
     def test_cli_send_email_uses_existing_email_notifier(self):
         cli = importlib.import_module("daily_job_report")

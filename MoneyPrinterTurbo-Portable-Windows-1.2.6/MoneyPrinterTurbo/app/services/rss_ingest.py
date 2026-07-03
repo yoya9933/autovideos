@@ -591,8 +591,14 @@ def save_seen_entries(
         json.dump(payload, file, ensure_ascii=False, indent=2)
 
 
-def collect_candidate_entries(feed_urls: list[str], seen_entries: set[str], limit: int = 5) -> list[FeedEntry]:
-    candidates: list[FeedEntry] = []
+def collect_candidate_entries(
+    feed_urls: list[str],
+    seen_entries: set[str],
+    limit: int = 5,
+    excluded_keywords: Iterable[str] | None = None,
+) -> list[FeedEntry]:
+    normalized_exclusions = _normalize_focus_keywords(excluded_keywords)
+    feed_candidates: list[list[FeedEntry]] = []
     for feed_url in feed_urls:
         try:
             entries = fetch_feed_entries(feed_url)
@@ -600,18 +606,38 @@ def collect_candidate_entries(feed_urls: list[str], seen_entries: set[str], limi
             logger.warning(f"failed to fetch feed {feed_url}: {exc}")
             continue
 
+        filtered_entries: list[FeedEntry] = []
         for entry in entries:
             if entry.entry_id in seen_entries:
                 continue
             if is_low_information_feed_entry(entry):
                 logger.info(f"skip low-information feed entry: {entry.title}")
                 continue
-            if any(is_same_event_entry(entry, candidate) for candidate in candidates):
-                logger.info(f"skip duplicate event feed entry: {entry.title}")
+            text = f"{entry.title} {entry.summary}".lower()
+            if any(keyword in text for keyword in normalized_exclusions):
+                logger.info(f"skip profile-excluded feed entry: {entry.title}")
                 continue
-            candidates.append(entry)
+            filtered_entries.append(entry)
+        feed_candidates.append(filtered_entries)
+
+    candidates: list[FeedEntry] = []
+    offsets = [0] * len(feed_candidates)
+    while len(candidates) < limit:
+        added_candidate = False
+        for feed_index, entries in enumerate(feed_candidates):
+            while offsets[feed_index] < len(entries):
+                entry = entries[offsets[feed_index]]
+                offsets[feed_index] += 1
+                if any(is_same_event_entry(entry, candidate) for candidate in candidates):
+                    logger.info(f"skip duplicate event feed entry: {entry.title}")
+                    continue
+                candidates.append(entry)
+                added_candidate = True
+                break
             if len(candidates) >= limit:
                 return candidates
+        if not added_candidate:
+            break
 
     return candidates
 
@@ -696,7 +722,11 @@ def _fallback_select_best_entry(
     return max(entries, key=lambda entry: _score_entry_for_video(entry, focus_keywords, focus_bonus))
 
 
-def _build_selection_prompt(entries: list[FeedEntry], focus_keywords: Iterable[str] | None = None) -> str:
+def _build_selection_prompt(
+    entries: list[FeedEntry],
+    focus_keywords: Iterable[str] | None = None,
+    editorial_brief: str = "",
+) -> str:
     lines = [
         "你是繁體中文 YouTube Shorts 選題主編。請從候選 RSS 條目中，挑出最適合做成 45-75 秒爆款資訊短片的一篇。",
         "優先選擇：反直覺、有明確衝突、和多數人生活有關、有最新性、能用一句話講出懸念、能引發留言討論的題目。",
@@ -707,6 +737,9 @@ def _build_selection_prompt(entries: list[FeedEntry], focus_keywords: Iterable[s
     normalized_focus_keywords = [str(keyword).strip() for keyword in focus_keywords or [] if str(keyword).strip()]
     if normalized_focus_keywords:
         lines.append(f"頻道聚焦主題：{', '.join(normalized_focus_keywords)}。相關題材可優先選。")
+        lines.append("")
+    if editorial_brief.strip():
+        lines.append(f"本次內容線編輯規則：{editorial_brief.strip()}")
         lines.append("")
     lines.append("候選條目：")
     for index, entry in enumerate(entries, start=1):
@@ -726,6 +759,7 @@ def select_best_entry_for_video(
     entries: list[FeedEntry],
     focus_keywords: Iterable[str] | None = None,
     focus_bonus: int = 8,
+    editorial_brief: str = "",
 ) -> FeedEntry | None:
     if not entries:
         return None
@@ -733,7 +767,9 @@ def select_best_entry_for_video(
     try:
         from app.services import llm
 
-        response = llm._generate_response(_build_selection_prompt(entries, focus_keywords))
+        response = llm._generate_response(
+            _build_selection_prompt(entries, focus_keywords, editorial_brief)
+        )
         match = re.search(r"\d+", response or "")
         if match:
             selected_index = int(match.group(0))
@@ -756,6 +792,7 @@ def build_script_prompt(
     full_text: str = "",
     max_summary_length: int = 1800,
     min_full_text_length: int = 300,
+    editorial_brief: str = "",
 ) -> str:
     """
     Build the LLM prompt for script generation.
@@ -793,6 +830,12 @@ def build_script_prompt(
         else "只根據來源摘要與標題改寫；資訊不足時寧可縮短到 35-50 秒，不要湊字數，但一定要完整收束，不要補不存在的細節。"
     )
 
+    editorial_rule = (
+        f"12. 本次內容線編輯規則：{editorial_brief.strip()}\n"
+        if editorial_brief.strip()
+        else ""
+    )
+
     return (
         f"請把以下 RSS 條目改寫成一支 {target_duration} 繁體中文 YouTube Shorts 旁白。\n"
         "內容策略：\n"
@@ -807,7 +850,8 @@ def build_script_prompt(
         f"9. 旁白長度必須落在 {target_length}，不要低於 250 個中文字。\n"
         "10. 最後一句必須是完整句子，並以「。」「？」「！」其中之一結尾；不要停在半句、不要留下未閉合引號。\n"
         "11. 不要輸出標題、分鏡、音效、hashtag、Markdown 或條列，只輸出旁白正文。\n\n"
-        f"標題：{entry.title}\n"
+        + editorial_rule
+        + f"標題：{entry.title}\n"
         f"來源：{entry.feed_url}\n"
         f"網址：{entry.link}\n"
         f"發布時間：{entry.published or '未知'}\n\n"
@@ -844,10 +888,20 @@ def _remove_unbalanced_title_quotes(title: str) -> str:
     return cleaned.strip()
 
 
-def build_title_prompt(entry: FeedEntry, max_summary_length: int = 1200) -> str:
+def build_title_prompt(
+    entry: FeedEntry,
+    max_summary_length: int = 1200,
+    editorial_brief: str = "",
+) -> str:
     summary = entry.summary.strip()
     if len(summary) > max_summary_length:
         summary = summary[:max_summary_length].rstrip() + "..."
+
+    editorial_rule = (
+        f"本次內容線編輯規則：{editorial_brief.strip()}\n\n"
+        if editorial_brief.strip()
+        else ""
+    )
 
     return (
         "你是繁體中文 YouTube Shorts 標題編輯。請根據以下 RSS 條目，生成 2 個繁體中文標題：\n"
@@ -856,7 +910,8 @@ def build_title_prompt(entry: FeedEntry, max_summary_length: int = 1200) -> str:
         "請嚴格使用以下 XML 格式輸出，不要包含任何額外解釋、引言、Markdown 或標記：\n"
         "<long>這裡寫影片長標題</long>\n"
         "<short>這裡寫縮圖短標題</short>\n\n"
-        f"原始標題：{entry.title}\n"
+        + editorial_rule
+        + f"原始標題：{entry.title}\n"
         f"來源：{entry.feed_url}\n"
         f"網址：{entry.link}\n"
         f"發布時間：{entry.published or '未知'}\n\n"
@@ -884,6 +939,7 @@ def generate_video_title(
     title_prefix: str = "",
     title_suffix: str = "",
     max_length: int = 90,
+    editorial_brief: str = "",
 ) -> tuple[str, str]:
     fallback_title = build_video_title(
         entry,
@@ -901,7 +957,9 @@ def generate_video_title(
         from app.services import llm
         import re
 
-        response = llm._generate_response(build_title_prompt(entry))
+        response = llm._generate_response(
+            build_title_prompt(entry, editorial_brief=editorial_brief)
+        )
         response_str = response or ""
 
         long_match = re.search(r"<long>(.*?)</long>", response_str, re.DOTALL)

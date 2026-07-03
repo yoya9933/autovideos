@@ -31,6 +31,8 @@ class DailyJobEntry:
     failure_stage: str
     error: str
     source: str
+    topic_profile: str = "unknown"
+    published: bool = False
     material_terms: tuple[str, ...] = field(default_factory=tuple)
     title_has_error: bool = False
     job_file: str = ""
@@ -43,6 +45,7 @@ class DailyJobReport:
     entries: tuple[DailyJobEntry, ...]
     source_counts: Counter[str]
     material_term_counts: Counter[str]
+    published_topic_profile_counts: Counter[str] = field(default_factory=Counter)
 
     @property
     def total_jobs(self) -> int:
@@ -146,6 +149,30 @@ def _youtube_video_id(job: dict, publish_status: dict) -> str:
     return ""
 
 
+def _was_published(job: dict, publish_status: dict) -> bool:
+    for raw_results in (job.get("platform_results"),):
+        if not isinstance(raw_results, list):
+            continue
+        if any(
+            isinstance(item, dict)
+            and bool(item.get("success"))
+            and str(item.get("status") or "") == "published"
+            for item in raw_results
+        ):
+            return True
+
+    platforms = publish_status.get("platforms")
+    if isinstance(platforms, dict) and any(
+        isinstance(item, dict)
+        and bool(item.get("success"))
+        and str(item.get("status") or "") == "published"
+        for item in platforms.values()
+    ):
+        return True
+
+    return bool(job.get("success") and _youtube_video_id(job, publish_status))
+
+
 def _material_terms(job: dict) -> tuple[str, ...]:
     raw_terms = job.get("material_terms")
     if not isinstance(raw_terms, list):
@@ -167,6 +194,7 @@ def build_daily_job_report(
     entries: list[DailyJobEntry] = []
     source_counts: Counter[str] = Counter()
     material_term_counts: Counter[str] = Counter()
+    published_topic_profile_counts: Counter[str] = Counter()
 
     for job_file in sorted(jobs_dir.glob("*.json")):
         job = _load_json_file(job_file)
@@ -179,9 +207,13 @@ def build_daily_job_report(
         source = _source_for_job(job, publish_status)
         terms = _material_terms(job)
         title = str(job.get("title") or "").strip()
+        topic_profile = str(job.get("topic_profile") or "unknown").strip() or "unknown"
+        published = _was_published(job, publish_status)
 
         source_counts[source] += 1
         material_term_counts.update(terms)
+        if published:
+            published_topic_profile_counts[topic_profile] += 1
         entries.append(
             DailyJobEntry(
                 task_id=task_id,
@@ -193,6 +225,8 @@ def build_daily_job_report(
                 failure_stage=str(job.get("failure_stage") or "").strip(),
                 error=str(job.get("error") or "").strip(),
                 source=source,
+                topic_profile=topic_profile,
+                published=published,
                 material_terms=terms,
                 title_has_error=_title_has_error(title),
                 job_file=str(job_file),
@@ -206,6 +240,7 @@ def build_daily_job_report(
         entries=tuple(entries),
         source_counts=source_counts,
         material_term_counts=material_term_counts,
+        published_topic_profile_counts=published_topic_profile_counts,
     )
 
 
@@ -226,6 +261,9 @@ def _format_count_section(title: str, counts: Counter[str], limit: int = 8) -> l
 
 
 def render_daily_job_report(report: DailyJobReport) -> str:
+    tech_count = report.published_topic_profile_counts.get("tech", 0)
+    consumer_count = report.published_topic_profile_counts.get("consumer_money", 0)
+    balance_status = "3:3 OK" if tech_count == 3 and consumer_count == 3 else "not 3:3"
     lines = [
         f"VideoTurn Daily Report - {report.report_date.isoformat()} ({report.timezone_name})",
         "",
@@ -235,6 +273,7 @@ def render_daily_job_report(report: DailyJobReport) -> str:
         f"- Failure: {report.failure_count}",
         f"- Public uploads: {report.public_upload_count}",
         f"- Error-like titles: {report.error_title_count}",
+        f"- Profile balance: tech={tech_count}, consumer_money={consumer_count} ({balance_status})",
     ]
 
     public_entries = [
@@ -272,6 +311,9 @@ def render_daily_job_report(report: DailyJobReport) -> str:
         lines.append("- none")
 
     lines += [""] + _format_count_section("Sources", report.source_counts)
+    lines += [""] + _format_count_section(
+        "Published topic profiles", report.published_topic_profile_counts
+    )
     lines += [""] + _format_count_section("Material terms", report.material_term_counts)
     return "\n".join(lines).rstrip() + "\n"
 

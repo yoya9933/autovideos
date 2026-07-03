@@ -38,6 +38,7 @@ from app.services.rss_ingest import (
     select_best_entry_for_video,
 )
 from app.services.thumbnail import generate_thumbnail
+from app.services.topic_profiles import load_topic_profile
 from app.services.youtube_publisher import youtube_publisher
 from app.services.youtube_upload import youtube_uploader
 from app.services.llm import VIDEO_TOPIC_KEYWORD_MAP
@@ -334,6 +335,10 @@ class _JobContext:
     voice_name: str = ""
     material_terms: list[str] | None = None
     short_title: str = ""
+    topic_profile: str = ""
+    source_title: str = ""
+    source_url: str = ""
+    source_feed: str = ""
 
     def save(
         self,
@@ -373,6 +378,10 @@ class _JobContext:
             publish_state_path=publish_state_path,
             platform_results=platform_results,
             short_title=self.short_title,
+            topic_profile=self.topic_profile,
+            source_title=self.source_title,
+            source_url=self.source_url,
+            source_feed=self.source_feed,
         )
 
 
@@ -398,6 +407,10 @@ def _save_job_metadata(
     publish_state_path: str = "",
     platform_results: list[dict] | None = None,
     short_title: str = "",
+    topic_profile: str = "",
+    source_title: str = "",
+    source_url: str = "",
+    source_feed: str = "",
 ) -> str:
     """Write a JSON metadata file per execution for audit / review."""
     jobs_dir = Path(config.root_dir) / "storage" / "auto_publish" / "jobs"
@@ -407,6 +420,10 @@ def _save_job_metadata(
         "task_id": task_id,
         "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "entry_id": entry_id,
+        "topic_profile": topic_profile,
+        "source_title": source_title,
+        "source_url": source_url,
+        "source_feed": source_feed,
         "title": title,
         "short_title": short_title,
         "description": description,
@@ -721,7 +738,7 @@ def _select_topic_bgm_file(
     return relative_path
 
 
-def _parse_args() -> argparse.Namespace:
+def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Fetch an RSS item, generate a short video, and upload to YouTube."
     )
@@ -742,6 +759,12 @@ def _parse_args() -> argparse.Namespace:
         help="Override the YouTube upload privacy status.",
     )
     parser.add_argument(
+        "--topic-profile",
+        choices=["tech", "consumer_money"],
+        default="",
+        help="Select the configured topic profile. Defaults to daily_default_topic_profile.",
+    )
+    parser.add_argument(
         "--publish-platforms",
         "--platforms",
         default="",
@@ -751,7 +774,7 @@ def _parse_args() -> argparse.Namespace:
             "Defaults to daily_publish_platforms in config.toml."
         ),
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def run() -> int:
@@ -760,6 +783,33 @@ def run() -> int:
 
     args = _parse_args()
     task_id = str(uuid4())
+    try:
+        topic_profile = load_topic_profile(config.app, args.topic_profile)
+    except (TypeError, ValueError) as exc:
+        error = str(exc)
+        logger.error(error)
+        job_path = _save_job_metadata(
+            task_id=task_id,
+            entry_id="",
+            title="",
+            description="",
+            prompt="",
+            success=False,
+            error=error,
+            failure_stage="topic_profile_config",
+            topic_profile=args.topic_profile,
+        )
+        notification_service.notify_failure(
+            NotificationContext(
+                task_id=task_id,
+                stage="topic_profile_config",
+                error=error,
+                job_path=job_path,
+            )
+        )
+        return 1
+    logger.info(f"topic profile: {topic_profile.name}")
+
     publish_platforms = _get_publish_platforms(args.publish_platforms)
     try:
         publishers = _get_publishers(publish_platforms)
@@ -776,6 +826,7 @@ def run() -> int:
             success=False,
             error=error,
             failure_stage="platform_config",
+            topic_profile=topic_profile.name,
         )
         notification_service.notify_failure(
             NotificationContext(
@@ -792,9 +843,9 @@ def run() -> int:
     if not _try_resume_pending_upload(publishers, args):
         return 1
 
-    feed_urls = _get_feed_urls()
+    feed_urls = list(topic_profile.feed_urls)
     if not feed_urls:
-        error = "no RSS feeds configured; set daily_rss_feeds in config.toml"
+        error = f"no RSS feeds configured for topic profile: {topic_profile.name}"
         logger.error(error)
         # entry/title/description/prompt not yet known — use bare function
         job_path = _save_job_metadata(
@@ -806,6 +857,7 @@ def run() -> int:
             success=False,
             error=error,
             failure_stage="rss_config",
+            topic_profile=topic_profile.name,
         )
         notification_service.notify_failure(
             NotificationContext(
@@ -819,17 +871,19 @@ def run() -> int:
 
     state_file = _get_state_file()
     seen_entries = load_seen_entries(state_file)
-    candidate_count = int(_get_config_value("daily_candidate_count", 5))
-    focus_keywords = _get_config_list("daily_focus_keywords")
-    focus_bonus = int(_get_config_value("daily_focus_keyword_bonus", 8))
-    candidates = collect_candidate_entries(feed_urls, seen_entries, limit=candidate_count)
+    candidates = collect_candidate_entries(
+        feed_urls,
+        seen_entries,
+        limit=topic_profile.candidate_count,
+        excluded_keywords=topic_profile.excluded_keywords,
+    )
     if candidates:
         logger.info(f"collected {len(candidates)} feed candidates")
         for index, candidate in enumerate(candidates, start=1):
             logger.info(f"candidate #{index}: {candidate.title}")
 
     if not candidates:
-        logger.info("no new feed items found")
+        logger.info(f"no new feed items found for topic profile: {topic_profile.name}")
         return 0
 
     privacy_status = args.privacy or _get_config_value("youtube_upload_privacy_status", "private")
@@ -844,8 +898,9 @@ def run() -> int:
     while remaining_candidates:
         selected_entry = select_best_entry_for_video(
             remaining_candidates,
-            focus_keywords=focus_keywords,
-            focus_bonus=focus_bonus,
+            focus_keywords=topic_profile.focus_keywords,
+            focus_bonus=topic_profile.focus_bonus,
+            editorial_brief=topic_profile.editorial_brief,
         )
         if selected_entry is None:
             break
@@ -907,6 +962,7 @@ def run() -> int:
             video_source=video_source,
             failure_stage="source_context",
             quality_issues=[error],
+            topic_profile=topic_profile.name,
         )
         notification_service.notify_failure(
             NotificationContext(
@@ -923,12 +979,14 @@ def run() -> int:
         entry,
         full_text=full_text,
         min_full_text_length=min_full_text_length,
+        editorial_brief=topic_profile.editorial_brief,
     )
     title, short_title = generate_video_title(
         entry,
         title_prefix=_get_config_value("daily_video_title_prefix", ""),
         title_suffix=_get_config_value("daily_video_title_suffix", ""),
         max_length=int(_get_config_value("daily_video_title_max_length", 90)),
+        editorial_brief=topic_profile.editorial_brief,
     )
     description_template = _get_config_value(
         "youtube_description_template",
@@ -979,12 +1037,17 @@ def run() -> int:
         voice_name=selected_voice_name,
         material_terms=material_terms,
         short_title=short_title,
+        topic_profile=topic_profile.name,
+        source_title=entry.title,
+        source_url=entry.link,
+        source_feed=entry.feed_url,
     )
 
     # ---------- dry-run: stop here ----------
     if args.dry_run:
         logger.info("--- DRY RUN ---")
         logger.info(f"task_id:     {task_id}")
+        logger.info(f"topic_profile:{topic_profile.name}")
         logger.info(f"title:       {title}")
         logger.info(f"privacy:     {privacy_status}")
         logger.info(f"video_source:{video_source}")

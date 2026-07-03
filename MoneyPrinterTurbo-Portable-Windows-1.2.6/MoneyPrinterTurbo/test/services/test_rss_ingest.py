@@ -74,6 +74,12 @@ class TestRssIngestTitleGeneration(unittest.TestCase):
         self.assertIn("18 個中文字以內", prompt)
         self.assertIn("禁止使用「今天我們來聊」", prompt)
 
+    def test_editorial_brief_is_added_to_title_and_script_prompts(self):
+        brief = "先說明一般人會多付、少拿或承擔什麼風險。"
+
+        self.assertIn(brief, build_title_prompt(_entry(), editorial_brief=brief))
+        self.assertIn(brief, build_script_prompt(_entry(), editorial_brief=brief))
+
 
 class TestSeenEntryState(unittest.TestCase):
     def test_seen_state_saves_timestamped_records(self):
@@ -157,6 +163,17 @@ class TestLowInformationFiltering(unittest.TestCase):
 
 
 class TestFocusAndEventDeduping(unittest.TestCase):
+    @staticmethod
+    def _candidate(feed: str, entry_id: str, title: str) -> FeedEntry:
+        return FeedEntry(
+            feed_url=feed,
+            entry_id=entry_id,
+            title=title,
+            summary=f"{title}，這項變化涉及明確費用與一般消費者權益，來源提供完整事件背景與具體影響。",
+            link=f"https://example.com/{entry_id}",
+            published="2026-07-03",
+        )
+
     def test_same_event_entries_are_detected(self):
         left = FeedEntry(
             feed_url="A",
@@ -197,6 +214,57 @@ class TestFocusAndEventDeduping(unittest.TestCase):
             candidates = collect_candidate_entries(["https://example.com/feed"], set(), limit=5)
 
         self.assertEqual([candidate.entry_id for candidate in candidates], ["1"])
+
+    def test_collect_candidate_entries_round_robins_across_feeds(self):
+        feed_a = [
+            self._candidate("A", "a1", "訂閱平台調漲月費引發退訂潮"),
+            self._candidate("A", "a2", "超商咖啡漲價反映原料成本"),
+        ]
+        feed_b = [
+            self._candidate("B", "b1", "網購退款流程新增手續費"),
+            self._candidate("B", "b2", "會員制度改版影響點數權益"),
+        ]
+
+        with patch(
+            "app.services.rss_ingest.fetch_feed_entries",
+            side_effect=[feed_a, feed_b],
+        ):
+            candidates = collect_candidate_entries(["A", "B"], set(), limit=4)
+
+        self.assertEqual(
+            [candidate.entry_id for candidate in candidates],
+            ["a1", "b1", "a2", "b2"],
+        )
+
+    def test_collect_candidate_entries_filters_profile_exclusions(self):
+        entries = [
+            self._candidate("A", "promo", "信用卡推薦限時申辦送好禮"),
+            self._candidate("A", "news", "信用卡海外手續費調整引發爭議"),
+        ]
+
+        with patch("app.services.rss_ingest.fetch_feed_entries", return_value=entries):
+            candidates = collect_candidate_entries(
+                ["A"],
+                set(),
+                limit=5,
+                excluded_keywords=["信用卡推薦", "申辦送好禮"],
+            )
+
+        self.assertEqual([candidate.entry_id for candidate in candidates], ["news"])
+
+    def test_selection_prompt_contains_profile_editorial_brief(self):
+        brief = "選擇有具體金額與一般人損益的消費題。"
+        candidate = self._candidate("A", "consumer", "串流平台調漲訂閱費")
+
+        with patch("app.services.llm._generate_response", return_value="1") as generate:
+            selected = select_best_entry_for_video(
+                [candidate],
+                focus_keywords=["漲價", "訂閱"],
+                editorial_brief=brief,
+            )
+
+        self.assertEqual(selected, candidate)
+        self.assertIn(brief, generate.call_args.args[0])
 
     def test_focus_keywords_bias_fallback_selection(self):
         broad = FeedEntry(

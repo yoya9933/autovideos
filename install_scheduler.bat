@@ -21,13 +21,13 @@ echo [1/8] Refreshing task XML for current folder...
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
     "$ErrorActionPreference = 'Stop';" ^
     "$ns = 'http://schemas.microsoft.com/windows/2004/02/mit/task';" ^
-    "function Set-TaskXml($path, $description, $startBoundary) { [xml]$xml = Get-Content -Raw -Path $path; $nsm = New-Object System.Xml.XmlNamespaceManager($xml.NameTable); $nsm.AddNamespace('t', $ns); $xml.SelectSingleNode('/t:Task/t:RegistrationInfo/t:Description', $nsm).InnerText = $description; $xml.SelectSingleNode('/t:Task/t:Triggers/t:CalendarTrigger/t:StartBoundary', $nsm).InnerText = $startBoundary; $xml.SelectSingleNode('/t:Task/t:Actions/t:Exec/t:Command', $nsm).InnerText = $env:TASK_COMMAND; $xml.SelectSingleNode('/t:Task/t:Actions/t:Exec/t:WorkingDirectory', $nsm).InnerText = $env:TASK_WORKDIR; $settings = New-Object System.Xml.XmlWriterSettings; $settings.Encoding = [System.Text.Encoding]::Unicode; $settings.Indent = $true; $writer = [System.Xml.XmlWriter]::Create($path, $settings); try { $xml.Save($writer) } finally { $writer.Close() } }" ^
-    "Set-TaskXml $env:XML_0900 'Auto publish YouTube Shorts - Run 1 (09:00)' '2026-06-06T09:00:00';" ^
-    "Set-TaskXml $env:XML_1130 'Auto publish YouTube Shorts - Run 2 (11:30)' '2026-06-06T11:30:00';" ^
-    "Set-TaskXml $env:XML_1400 'Auto publish YouTube Shorts - Run 3 (14:00)' '2026-06-06T14:00:00';" ^
-    "Set-TaskXml $env:XML_1630 'Auto publish YouTube Shorts - Run 4 (16:30)' '2026-06-06T16:30:00';" ^
-    "Set-TaskXml $env:XML_1900 'Auto publish YouTube Shorts - Run 5 (19:00)' '2026-06-06T19:00:00';" ^
-    "Set-TaskXml $env:XML_2130 'Auto publish YouTube Shorts - Run 6 (21:30)' '2026-06-06T21:30:00';"
+    "function Set-TaskXml($path, $description, $startBoundary, $arguments) { [xml]$xml = Get-Content -Raw -Path $path; $nsm = New-Object System.Xml.XmlNamespaceManager($xml.NameTable); $nsm.AddNamespace('t', $ns); $xml.SelectSingleNode('/t:Task/t:RegistrationInfo/t:Description', $nsm).InnerText = $description; $xml.SelectSingleNode('/t:Task/t:Triggers/t:CalendarTrigger/t:StartBoundary', $nsm).InnerText = $startBoundary; $commandNode = $xml.SelectSingleNode('/t:Task/t:Actions/t:Exec/t:Command', $nsm); $commandNode.InnerText = $env:TASK_COMMAND; $execNode = $xml.SelectSingleNode('/t:Task/t:Actions/t:Exec', $nsm); $argumentsNode = $xml.SelectSingleNode('/t:Task/t:Actions/t:Exec/t:Arguments', $nsm); if ($null -eq $argumentsNode) { $argumentsNode = $xml.CreateElement('Arguments', $ns); [void]$execNode.InsertAfter($argumentsNode, $commandNode) }; $argumentsNode.InnerText = $arguments; $xml.SelectSingleNode('/t:Task/t:Actions/t:Exec/t:WorkingDirectory', $nsm).InnerText = $env:TASK_WORKDIR; $settings = New-Object System.Xml.XmlWriterSettings; $settings.Encoding = [System.Text.Encoding]::Unicode; $settings.Indent = $true; $writer = [System.Xml.XmlWriter]::Create($path, $settings); try { $xml.Save($writer) } finally { $writer.Close() } }" ^
+    "Set-TaskXml $env:XML_0900 'Auto publish YouTube Shorts - Run 1 (09:00)' '2026-06-06T09:00:00' '--topic-profile tech';" ^
+    "Set-TaskXml $env:XML_1130 'Auto publish YouTube Shorts - Run 2 (11:30)' '2026-06-06T11:30:00' '--topic-profile consumer_money';" ^
+    "Set-TaskXml $env:XML_1400 'Auto publish YouTube Shorts - Run 3 (14:00)' '2026-06-06T14:00:00' '--topic-profile tech';" ^
+    "Set-TaskXml $env:XML_1630 'Auto publish YouTube Shorts - Run 4 (16:30)' '2026-06-06T16:30:00' '--topic-profile consumer_money';" ^
+    "Set-TaskXml $env:XML_1900 'Auto publish YouTube Shorts - Run 5 (19:00)' '2026-06-06T19:00:00' '--topic-profile tech';" ^
+    "Set-TaskXml $env:XML_2130 'Auto publish YouTube Shorts - Run 6 (21:30)' '2026-06-06T21:30:00' '--topic-profile consumer_money';"
 if errorlevel 1 (
     echo     [FAIL] Failed to refresh task XML.
     pause
