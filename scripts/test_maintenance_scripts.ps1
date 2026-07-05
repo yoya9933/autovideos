@@ -246,6 +246,33 @@ function Test-SafePushBlocksOAuthTokenJsonNames {
     }
 }
 
+function Test-SafePushBlocksOAuthTokenPickleNames {
+    Invoke-WithTempRepo {
+        param($fixture)
+
+        $baseline = Join-Path $fixture.Root "baseline.txt"
+        Set-Content -Path $baseline -Value "" -Encoding UTF8
+        $checkScript = New-PassingCheckScript -Directory $fixture.Root
+        Set-Content -Path (Join-Path $fixture.Repo "youtube_token.pickle") -Value "serialized-token" -Encoding UTF8
+        Set-Content -Path (Join-Path $fixture.Repo "credentials.pkl") -Value "serialized-credentials" -Encoding UTF8
+
+        $result = Invoke-ScriptProcess -Arguments @(
+            "-NoProfile", "-ExecutionPolicy", "Bypass",
+            "-File", $SafePushScript,
+            "-RepoRoot", $fixture.Repo,
+            "-ExpectedRemoteUrl", $fixture.Remote,
+            "-BaselineStatusPath", $baseline,
+            "-CheckScriptPath", $checkScript,
+            "-Message", "auto-maintenance: test"
+        )
+
+        Assert-True -Condition ($result.ExitCode -ne 0) -Message "Expected OAuth token pickle names to fail."
+        Assert-Contains -Text $result.Output -Expected "Refusing to commit sensitive/generated paths" -Message "Expected sensitive path failure message."
+        Assert-Contains -Text $result.Output -Expected "youtube_token.pickle" -Message "Expected token pickle file to be blocked."
+        Assert-Contains -Text $result.Output -Expected "credentials.pkl" -Message "Expected credentials pickle file to be blocked."
+    }
+}
+
 function Test-SafePushRejectsCheckScriptMutation {
     Invoke-WithTempRepo {
         param($fixture)
@@ -345,6 +372,7 @@ $tests = @(
     "Test-SafePushBlocksSensitivePath",
     "Test-SafePushBlocksLocalSecretConfigNames",
     "Test-SafePushBlocksOAuthTokenJsonNames",
+    "Test-SafePushBlocksOAuthTokenPickleNames",
     "Test-SafePushRejectsCheckScriptMutation",
     "Test-SafePushCommitsAndPushesMain",
     "Test-RunMaintenanceChecksRejectsInvalidPowerShellSyntax",
