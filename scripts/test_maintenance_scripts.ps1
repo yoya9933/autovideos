@@ -219,6 +219,33 @@ function Test-SafePushBlocksLocalSecretConfigNames {
     }
 }
 
+function Test-SafePushBlocksOAuthTokenJsonNames {
+    Invoke-WithTempRepo {
+        param($fixture)
+
+        $baseline = Join-Path $fixture.Root "baseline.txt"
+        Set-Content -Path $baseline -Value "" -Encoding UTF8
+        $checkScript = New-PassingCheckScript -Directory $fixture.Root
+        Set-Content -Path (Join-Path $fixture.Repo "youtube_token.json") -Value "{}" -Encoding UTF8
+        Set-Content -Path (Join-Path $fixture.Repo "credentials.json") -Value "{}" -Encoding UTF8
+
+        $result = Invoke-ScriptProcess -Arguments @(
+            "-NoProfile", "-ExecutionPolicy", "Bypass",
+            "-File", $SafePushScript,
+            "-RepoRoot", $fixture.Repo,
+            "-ExpectedRemoteUrl", $fixture.Remote,
+            "-BaselineStatusPath", $baseline,
+            "-CheckScriptPath", $checkScript,
+            "-Message", "auto-maintenance: test"
+        )
+
+        Assert-True -Condition ($result.ExitCode -ne 0) -Message "Expected OAuth token JSON names to fail."
+        Assert-Contains -Text $result.Output -Expected "Refusing to commit sensitive/generated paths" -Message "Expected sensitive path failure message."
+        Assert-Contains -Text $result.Output -Expected "youtube_token.json" -Message "Expected token file to be blocked."
+        Assert-Contains -Text $result.Output -Expected "credentials.json" -Message "Expected credentials file to be blocked."
+    }
+}
+
 function Test-SafePushRejectsCheckScriptMutation {
     Invoke-WithTempRepo {
         param($fixture)
@@ -317,6 +344,7 @@ $tests = @(
     "Test-SafePushRejectsBaselineInsideRepository",
     "Test-SafePushBlocksSensitivePath",
     "Test-SafePushBlocksLocalSecretConfigNames",
+    "Test-SafePushBlocksOAuthTokenJsonNames",
     "Test-SafePushRejectsCheckScriptMutation",
     "Test-SafePushCommitsAndPushesMain",
     "Test-RunMaintenanceChecksRejectsInvalidPowerShellSyntax",
