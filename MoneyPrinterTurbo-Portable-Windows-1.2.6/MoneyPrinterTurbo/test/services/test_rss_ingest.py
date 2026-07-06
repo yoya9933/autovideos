@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 
+from app.models.schema import VideoParams
 from app.services.rss_ingest import (
     FeedEntry,
     build_script_prompt,
@@ -79,6 +80,26 @@ class TestRssIngestTitleGeneration(unittest.TestCase):
 
         self.assertIn(brief, build_title_prompt(_entry(), editorial_brief=brief))
         self.assertIn(brief, build_script_prompt(_entry(), editorial_brief=brief))
+
+
+    def test_build_script_prompt_fits_video_params_limit_with_long_context(self):
+        entry = FeedEntry(
+            feed_url="https://example.com/feed",
+            entry_id="long-entry",
+            title="Long article title",
+            summary="summary " * 120,
+            link="https://example.com/article",
+            published="2026-07-06",
+        )
+
+        prompt = build_script_prompt(
+            entry,
+            full_text="full article context " * 160,
+            editorial_brief="editorial brief " * 40,
+        )
+
+        self.assertLessEqual(len(prompt), 2000)
+        VideoParams(video_subject="subject", video_script_prompt=prompt)
 
 
 class TestSeenEntryState(unittest.TestCase):

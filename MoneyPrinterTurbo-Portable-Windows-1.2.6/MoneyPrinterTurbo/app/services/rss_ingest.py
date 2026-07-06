@@ -16,6 +16,10 @@ import requests
 from loguru import logger
 
 
+MAX_VIDEO_SCRIPT_PROMPT_LENGTH = 2000
+_TRUNCATION_SUFFIX = "..."
+
+
 class _TextExtractor(HTMLParser):
     """Strip HTML tags; skip script/style/nav/footer noise; collect readable text."""
 
@@ -266,6 +270,17 @@ class FeedEntry:
 
 def _normalize_whitespace(text: str) -> str:
     return " ".join(text.replace("\r", " ").replace("\n", " ").split()).strip()
+
+
+def _truncate_text(text: str, max_length: int) -> str:
+    text = (text or "").strip()
+    if max_length <= 0:
+        return ""
+    if len(text) <= max_length:
+        return text
+    if max_length <= len(_TRUNCATION_SUFFIX):
+        return text[:max_length]
+    return text[: max_length - len(_TRUNCATION_SUFFIX)].rstrip() + _TRUNCATION_SUFFIX
 
 
 def _token_count(text: str) -> int:
@@ -793,6 +808,7 @@ def build_script_prompt(
     max_summary_length: int = 1800,
     min_full_text_length: int = 300,
     editorial_brief: str = "",
+    max_prompt_length: int = MAX_VIDEO_SCRIPT_PROMPT_LENGTH,
 ) -> str:
     """
     Build the LLM prompt for script generation.
@@ -836,7 +852,7 @@ def build_script_prompt(
         else ""
     )
 
-    return (
+    prompt = (
         f"請把以下 RSS 條目改寫成一支 {target_duration} 繁體中文 YouTube Shorts 旁白。\n"
         "內容策略：\n"
         "1. 前 3 秒必須直接出現重點、衝突、數字、風險或問題；第一句建議 18 個中文字以內，不要鋪陳背景。\n"
@@ -857,6 +873,13 @@ def build_script_prompt(
         f"發布時間：{entry.published or '未知'}\n\n"
         + content_section
     ).strip()
+    if len(prompt) > max_prompt_length:
+        logger.warning(
+            "build_script_prompt: prompt is too long and will be truncated: "
+            f"{len(prompt)} > {max_prompt_length}"
+        )
+        prompt = _truncate_text(prompt, max_prompt_length)
+    return prompt
 
 
 def _trim_title(title: str, max_length: int) -> str:
