@@ -10,6 +10,7 @@ from app.services.rss_ingest import (
     FeedEntry,
     build_script_prompt,
     build_title_prompt,
+    build_video_title,
     collect_candidate_entries,
     generate_video_title,
     has_enough_source_context,
@@ -57,6 +58,20 @@ class TestRssIngestTitleGeneration(unittest.TestCase):
 
         self.assertEqual(title, "Shorts 維基百科2026年5月30日典範條目")
         self.assertEqual(short_title, "Shorts維基")
+
+    def test_generate_video_title_falls_back_to_rss_title_on_llm_error_response(self):
+        with patch(
+            "app.services.llm._generate_response",
+            return_value="Error: [openrouter] returned empty choices",
+        ):
+            title, short_title = generate_video_title(_entry(), title_prefix="Shorts")
+
+        expected_title = build_video_title(_entry(), title_prefix="Shorts")
+        self.assertEqual(title, expected_title)
+        self.assertNotIn("Error:", title)
+        self.assertNotIn("openrouter", title.lower())
+        self.assertNotIn("Error:", short_title)
+        self.assertNotIn("openrouter", short_title.lower())
 
     def test_build_script_prompt_does_not_force_padding_short_sources(self):
         prompt = build_script_prompt(_entry(), max_summary_length=20)

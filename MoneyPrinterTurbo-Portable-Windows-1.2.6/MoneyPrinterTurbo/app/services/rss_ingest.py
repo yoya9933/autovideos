@@ -957,6 +957,10 @@ def build_video_title(
     return _trim_title(title, max_length)
 
 
+def _looks_like_llm_error_response(response: str) -> bool:
+    return (response or "").strip().lower().startswith("error:")
+
+
 def generate_video_title(
     entry: FeedEntry,
     title_prefix: str = "",
@@ -984,6 +988,11 @@ def generate_video_title(
             build_title_prompt(entry, editorial_brief=editorial_brief)
         )
         response_str = response or ""
+        if _looks_like_llm_error_response(response_str):
+            logger.warning(
+                f"AI title generation returned an error response, falling back to RSS title: {response_str}"
+            )
+            return fallback_title, make_fallback_short(fallback_title)
 
         long_match = re.search(r"<long>(.*?)</long>", response_str, re.DOTALL)
         short_match = re.search(r"<short>(.*?)</short>", response_str, re.DOTALL)
