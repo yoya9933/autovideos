@@ -152,7 +152,7 @@ function Assert-SafePaths {
         '(^|/)venv(/|$)',
         '(^|/)__pycache__(/|$)',
         '/__pycache__/',
-        '\.(mp4|mov|mkv|webm|mp3|wav|ttc|7z|zip|log|tmp|bak)$'
+        '\.(mp4|mov|mkv|webm|mp3|wav|ttc|7z|zip|log|tmp|bak|db|sqlite|sqlite3)$'
     )
 
     $blocked = @()
