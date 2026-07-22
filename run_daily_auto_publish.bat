@@ -25,8 +25,8 @@ echo ==== %DATE% %TIME% run_daily_auto_publish start ==== >> "%BAT_LOG%"
 "%CURRENT_DIR%lib\python\python.exe" auto_publish_youtube.py %* >> "%BAT_LOG%" 2>&1
 set "EXIT_CODE=%ERRORLEVEL%"
 echo ==== %DATE% %TIME% run_daily_auto_publish exit %EXIT_CODE% ==== >> "%BAT_LOG%"
-echo ==== %DATE% %TIME% daily_job_report --send-email start ==== >> "%BAT_LOG%"
-"%CURRENT_DIR%lib\python\python.exe" daily_job_report.py --send-email >> "%BAT_LOG%" 2>&1
+echo ==== %DATE% %TIME% daily_job_report --send-email-on-complete start ==== >> "%BAT_LOG%"
+"%CURRENT_DIR%lib\python\python.exe" daily_job_report.py --send-email --send-email-on-complete --expected-jobs 24 >> "%BAT_LOG%" 2>&1
 set "REPORT_EXIT_CODE=%ERRORLEVEL%"
 echo ==== %DATE% %TIME% daily_job_report --send-email exit %REPORT_EXIT_CODE% ==== >> "%BAT_LOG%"
 

@@ -138,6 +138,22 @@ class TestDailyJobReport(unittest.TestCase):
 
         self.assertIn("Profile balance: tech=3, consumer_money=3 (3:3 OK)", body)
 
+    def test_render_daily_job_report_uses_expected_job_count_for_balance(self):
+        report = DailyJobReport(
+            report_date=date(2026, 6, 13),
+            timezone_name="Asia/Taipei",
+            entries=(),
+            source_counts=Counter(),
+            material_term_counts=Counter(),
+            published_topic_profile_counts=Counter(
+                {"tech": 12, "consumer_money": 12}
+            ),
+        )
+
+        body = render_daily_job_report(report, expected_jobs=24)
+
+        self.assertIn("Profile balance: tech=12, consumer_money=12 (12:12 OK)", body)
+
     def test_cli_send_email_uses_existing_email_notifier(self):
         cli = importlib.import_module("daily_job_report")
         report = DailyJobReport(

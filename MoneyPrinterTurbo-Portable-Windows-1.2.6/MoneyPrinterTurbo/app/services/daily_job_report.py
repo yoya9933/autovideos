@@ -260,10 +260,17 @@ def _format_count_section(title: str, counts: Counter[str], limit: int = 8) -> l
     return lines
 
 
-def render_daily_job_report(report: DailyJobReport) -> str:
+def render_daily_job_report(report: DailyJobReport, expected_jobs: int = 6) -> str:
     tech_count = report.published_topic_profile_counts.get("tech", 0)
     consumer_count = report.published_topic_profile_counts.get("consumer_money", 0)
-    balance_status = "3:3 OK" if tech_count == 3 and consumer_count == 3 else "not 3:3"
+    expected_per_profile = expected_jobs // 2
+    balance_label = f"{expected_per_profile}:{expected_per_profile}"
+    balance_status = (
+        f"{balance_label} OK"
+        if tech_count == expected_per_profile
+        and consumer_count == expected_per_profile
+        else f"not {balance_label}"
+    )
     lines = [
         f"VideoTurn Daily Report - {report.report_date.isoformat()} ({report.timezone_name})",
         "",

@@ -10,12 +10,10 @@ class TestSchedulerTopicProfiles(unittest.TestCase):
     def test_each_scheduler_task_has_expected_topic_profile(self):
         workspace_root = Path(__file__).resolve().parents[4]
         expected_arguments = {
-            "task_0900.xml": "--topic-profile tech",
-            "task_1130.xml": "--topic-profile consumer_money",
-            "task_1400.xml": "--topic-profile tech",
-            "task_1630.xml": "--topic-profile consumer_money",
-            "task_1900.xml": "--topic-profile tech",
-            "task_2130.xml": "--topic-profile consumer_money",
+            "task_tech_4h.xml": "--topic-profile tech",
+            "task_consumer_4h.xml": "--topic-profile consumer_money",
+            "task_cybersecurity_4h.xml": "--topic-profile cybersecurity",
+            "task_science_future_4h.xml": "--topic-profile science_future",
         }
 
         actual_arguments = {}

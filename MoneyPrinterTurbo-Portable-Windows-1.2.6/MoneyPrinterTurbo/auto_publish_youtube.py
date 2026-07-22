@@ -178,6 +178,27 @@ def _get_daily_voice_name() -> str:
     return voice_names[slot % len(voice_names)]
 
 
+def _get_daily_voice_rate(voice_name: str) -> float:
+    default_rate = float(_get_config_value("daily_voice_rate", 1.0))
+    voice_rates = config.app.get("daily_voice_rates", {})
+    if not isinstance(voice_rates, dict):
+        return default_rate
+
+    override = voice_rates.get(voice_name)
+    if override in (None, ""):
+        return default_rate
+
+    try:
+        return float(override)
+    except (TypeError, ValueError):
+        logger.warning(
+            "invalid daily voice rate override for %s: %r; using default rate",
+            voice_name,
+            override,
+        )
+        return default_rate
+
+
 def _has_config_value(key: str) -> bool:
     value = config.app.get(key)
     if isinstance(value, str):
@@ -759,8 +780,13 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Override the YouTube upload privacy status.",
     )
     parser.add_argument(
+        "--voice-name",
+        default="",
+        help="Use this voice for this run instead of the configured rotation.",
+    )
+    parser.add_argument(
         "--topic-profile",
-        choices=["tech", "consumer_money"],
+        choices=["tech", "consumer_money", "cybersecurity", "science_future"],
         default="",
         help="Select the configured topic profile. Defaults to daily_default_topic_profile.",
     )
@@ -1015,7 +1041,7 @@ def run() -> int:
         privacy_status=privacy_status,
         short_title=short_title,
     )
-    selected_voice_name = _get_daily_voice_name()
+    selected_voice_name = args.voice_name.strip() or _get_daily_voice_name()
     material_terms = [] if video_source == "local" else _build_daily_material_terms(
         entry,
         title=title,
@@ -1088,7 +1114,7 @@ def run() -> int:
         video_source=video_source,
         video_terms=material_terms if video_source != "local" else None,
         voice_name=selected_voice_name,
-        voice_rate=float(_get_config_value("daily_voice_rate", 1.0)),
+        voice_rate=_get_daily_voice_rate(selected_voice_name),
         bgm_type=daily_bgm_type,
         bgm_file=bgm_file,
         bgm_volume=float(_get_config_value("daily_bgm_volume", 0.2)),

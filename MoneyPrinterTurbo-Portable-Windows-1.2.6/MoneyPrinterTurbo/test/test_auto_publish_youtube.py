@@ -36,6 +36,19 @@ class TestAutoPublish(unittest.TestCase):
 
         self.assertEqual(args.topic_profile, "")
 
+    def test_daily_voice_rate_uses_voice_override_and_default(self):
+        config.app["daily_voice_rate"] = 1.15
+        config.app["daily_voice_rates"] = {
+            "zh-TW-HsiaoYuNeural-Female": 1.40,
+        }
+
+        self.assertEqual(
+            ap._get_daily_voice_rate("zh-TW-HsiaoYuNeural-Female"), 1.40
+        )
+        self.assertEqual(
+            ap._get_daily_voice_rate("zh-TW-HsiaoChenNeural-Female"), 1.15
+        )
+
     def test_job_context_persists_topic_profile_and_source_fields(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             with patch.object(config, "root_dir", tmp_dir):

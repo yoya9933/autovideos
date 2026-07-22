@@ -296,6 +296,8 @@ daily_material_fallback_terms = ["technology news", "digital technology", "compu
 daily_voice_name = "zh-CN-XiaoyiNeural-Female"
 daily_voice_names = ["zh-TW-HsiaoChenNeural-Female", "zh-TW-HsiaoYuNeural-Female", "zh-CN-XiaoyiNeural-Female"]
 daily_voice_rate = 1.0
+# Optional per-voice overrides for voices whose natural pace differs.
+daily_voice_rates = { "zh-TW-HsiaoYuNeural-Female" = 1.40 }
 daily_bgm_type = "random"
 daily_bgm_volume = 0.15
 daily_subtitle_enabled = true
@@ -408,6 +410,29 @@ focus_keywords = ["漲價", "降價", "訂閱", "手續費", "退款", "退費",
 focus_keyword_bonus = 4
 excluded_keywords = ["目標價", "買進", "賣出", "存股", "ETF推薦", "基金申購", "信用卡推薦", "申辦送好禮", "開戶禮", "抽獎活動", "限時優惠", "討論牆"]
 editorial_brief = "優先選擇與一般人生活直接相關、具有明確金額、比例、規則變化或損益的題目；先說明觀眾會多付、少拿或承擔什麼風險。可解釋市場現象，但不得提供個股買賣建議。"
+
+[app.daily_topic_profiles.cybersecurity]
+feeds = [
+  "https://news.google.com/rss/search?q=%E8%B3%87%E5%AE%89%20OR%20%E9%A7%AD%E5%AE%A2%20OR%20%E5%8B%92%E7%B4%A2%E8%BB%9F%E9%AB%94%20OR%20%E8%B3%87%E6%96%99%E5%A4%96%E6%B4%A9%20OR%20%E7%B6%B2%E8%B7%AF%E9%87%A3%E9%AD%9A%20OR%20%E5%81%87%E6%8A%95%E8%B3%87%20OR%20%E6%83%A1%E6%84%8F%E7%A8%8B%E5%BC%8F&hl=zh-TW&gl=TW&ceid=TW:zh-Hant",
+  "https://www.ithome.com.tw/rss"
+]
+candidate_count = 24
+focus_keywords = ["資安", "駭客", "漏洞", "勒索軟體", "資料外洩", "個資", "釣魚", "詐騙", "惡意程式", "帳號", "密碼", "平台", "裝置"]
+focus_keyword_bonus = 8
+excluded_keywords = ["研討會", "徵才", "白皮書下載", "產品發表會"]
+editorial_brief = "優先選擇會改變一般人帳號、金錢、個資或裝置安全的事件。第一句先說風險與影響，再解釋攻擊手法或平台措施；不要製造恐慌，也不要提供可直接濫用的攻擊步驟。"
+
+[app.daily_topic_profiles.science_future]
+feeds = [
+  "https://news.google.com/rss/headlines/section/topic/SCIENCE?hl=zh-TW&gl=TW&ceid=TW:zh-Hant",
+  "https://pansci.asia/feed/",
+  "https://www.nasa.gov/rss/dyn/breaking_news.rss"
+]
+candidate_count = 24
+focus_keywords = ["太空", "火箭", "衛星", "月球", "能源", "核融合", "電池", "機器人", "新材料", "量子", "氣候", "科學突破"]
+focus_keyword_bonus = 6
+excluded_keywords = ["星座", "命理", "課程招生", "展覽活動"]
+editorial_brief = "優先選擇太空、能源、機器人、新材料與重大科學突破中，能用具體數字或生活影響說清楚的事件。先講這項突破改變了什麼，再交代證據與限制；不把早期研究說成已經成熟的產品。"
 
 
 [whisper]
