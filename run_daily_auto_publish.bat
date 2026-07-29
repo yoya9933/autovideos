@@ -2,6 +2,13 @@
 setlocal
 chcp 65001 >nul
 
+rem --- Reversible project-level pause switch ---
+if exist "%~dp0AUTO_PUBLISH_PAUSED" (
+    echo [%DATE% %TIME%] Auto publish is paused by AUTO_PUBLISH_PAUSED.
+    endlocal
+    exit /b 0
+)
+
 set "CURRENT_DIR=%~dp0MoneyPrinterTurbo-Portable-Windows-1.2.6\"
 
 rem --- FFmpeg / ImageMagick (same as start.bat) ---
